@@ -1,27 +1,33 @@
 import 'package:flutter/material.dart';
-import '../features/destinations/models/destination_model.dart';
+import '../core/constants/app_colors.dart';
+import '../features/explore/models/destination_model.dart';
+import '../screens/destination_detail_screen.dart';
 
-class DestinationsScreen extends StatelessWidget {
-  const DestinationsScreen({super.key});
+
+class ExploreScreen extends StatelessWidget {
+  const ExploreScreen({super.key});
 
   static final List<Destination> destinations = [
     Destination(
-      id: '1',
-      name: 'Cartagena',
-      country: 'Colombia',
-      description: 'Ciudad histórica con playas y cultura.',
-      latitude: 10.3910,
-      longitude: -75.4794,
-      tags: ['cultura', 'playa'],
+    title: 'Cartagena de Indias',
+    country: 'Colombia',
+    description: 'Historia, playas y cultura',
+    imageUrl:
+        'https://source.unsplash.com/featured/?cartagena,beach,city',
     ),
     Destination(
-      id: '2',
-      name: 'Medellín',
-      country: 'Colombia',
-      description: 'Ciudad de innovación y clima primaveral.',
-      latitude: 6.2442,
-      longitude: -75.5812,
-      tags: ['naturaleza', 'ciudad'],
+      title: 'Kyoto',
+      country: 'Japón',
+      description: 'Templos, tradición y naturaleza',
+      imageUrl:
+          'https://source.unsplash.com/featured/?kyoto,japan,temple',
+    ),
+    Destination(
+      title: 'París',
+      country: 'Francia',
+      description: 'Arte, gastronomía y romance',
+      imageUrl:
+          'https://source.unsplash.com/featured/?paris,eiffel',
     ),
   ];
 
@@ -29,22 +35,95 @@ class DestinationsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Destinos'),
+        title: const Text('Explorar destinos'),
       ),
       body: ListView.builder(
+        padding: const EdgeInsets.all(16),
         itemCount: destinations.length,
         itemBuilder: (context, index) {
-          final destination = destinations[index];
-          return ListTile(
-            leading: const Icon(Icons.place),
-            title: Text(destination.name),
-            subtitle: Text(destination.country),
-            trailing: const Icon(Icons.arrow_forward_ios),
-            onTap: () {
-              // Luego abriremos el detalle
-            },
-          );
+          return DestinationCard(destination: destinations[index]);
         },
+      ),
+    );
+  }
+}
+
+
+class DestinationCard extends StatelessWidget {
+  final Destination destination;
+
+  const DestinationCard({
+    super.key,
+    required this.destination,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      elevation: 4,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(16),
+            ),
+            child: Image.network(
+              destination.imageUrl,
+              height: 180,
+              width: double.infinity,
+              fit: BoxFit.cover,
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  destination.title,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  destination.country,
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(destination.description),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.accent,
+                    ),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => DestinationDetailScreen(
+                            destination: destination,
+                          ),
+                        ),
+                      );
+                    },
+                    child: const Text('Ver más'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
