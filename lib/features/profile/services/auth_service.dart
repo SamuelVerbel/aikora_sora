@@ -1,35 +1,31 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthService {
-  final SupabaseClient _supabase = Supabase.instance.client;
+  final _supabase = Supabase.instance.client;
 
-  // LOGIN
-  Future<AuthResponse> signIn({
-    required String email,
-    required String password,
-  }) async {
-    return await _supabase.auth.signInWithPassword(
-      email: email,
-      password: password,
+  /// Login con Google
+  Future<void> signInWithGoogle() async {
+    final googleSignIn = GoogleSignIn(
+      scopes: ['email', 'profile'],
     );
-  }
 
-  // REGISTER
-  Future<AuthResponse> signUp({
-    required String email,
-    required String password,
-  }) async {
-    return await _supabase.auth.signUp(
-      email: email,
-      password: password,
+    final googleUser = await googleSignIn.signIn();
+    if (googleUser == null) return;
+
+    final googleAuth = await googleUser.authentication;
+
+    final idToken = googleAuth.idToken;
+    final accessToken = googleAuth.accessToken;
+
+    if (idToken == null || accessToken == null) {
+      throw 'Error obteniendo tokens de Google';
+    }
+
+    await _supabase.auth.signInWithIdToken(
+      provider: OAuthProvider.google,
+      idToken: idToken,
+      accessToken: accessToken,
     );
-  }
-
-  // USER ACTUAL
-  User? get currentUser => _supabase.auth.currentUser;
-
-  // LOGOUT
-  Future<void> signOut() async {
-    await _supabase.auth.signOut();
   }
 }

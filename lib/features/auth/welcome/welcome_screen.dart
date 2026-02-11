@@ -8,30 +8,35 @@ class WelcomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            const Spacer(),
+
+            // Logo / Nombre
             const Icon(
-              Icons.travel_explore,
-              size: 120,
+              Icons.flight_takeoff,
+              size: 100,
               color: AppColors.accent,
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
 
             const Text(
               'Aikōra Sora',
+              textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 32,
                 fontWeight: FontWeight.bold,
               ),
             ),
-
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
 
             const Text(
-              'Explora inteligente.\nViaja mejor.',
+              'Planifica viajes inteligentes\ncon ayuda de IA',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 18,
@@ -39,31 +44,46 @@ class WelcomeScreen extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 48),
+            const Spacer(),
 
-            /// BOTÓN LOGIN
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pushNamed(context, AppRoutes.login);
-                },
-                child: const Text('Iniciar sesión'),
+            // Botón crear cuenta
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pushNamed(context, AppRoutes.register);
+              },
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                backgroundColor: AppColors.accent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text(
+                'Crear cuenta',
+                style: TextStyle(fontSize: 16),
               ),
             ),
 
             const SizedBox(height: 16),
 
-            /// BOTÓN REGISTER
-            SizedBox(
-              width: double.infinity,
-              child:OutlinedButton(
-                onPressed: () {
-                  Navigator.pushNamed(context, AppRoutes.register);
-                },
-                child: const Text('Crear cuenta'),
+            // Botón iniciar sesión
+            OutlinedButton(
+              onPressed: () {
+                Navigator.pushNamed(context, AppRoutes.login);
+              },
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text(
+                'Iniciar sesión',
+                style: TextStyle(fontSize: 16),
               ),
             ),
+
+            const SizedBox(height: 40),
           ],
         ),
       ),

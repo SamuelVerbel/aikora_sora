@@ -4,13 +4,14 @@ import 'package:flutter/material.dart';
 import '../../features/auth/welcome/welcome_screen.dart';
 import '../../features/auth/login/login_screen.dart';
 import '../../features/auth/register/register_screen.dart';
+import '/features/auth/auth_gate.dart';
 
 // Home & profile
 import '../../features/home/home_screen.dart';
 import '../../features/profile/profile_screen.dart';
 
 // Trip / IA
-import 'package:flutter_application_1/screens/plan_trip_screen.dart';
+import 'package:aikora_sora/screens/plan_trip_screen.dart';
 import '../../features/explore/explore_screen.dart';
 
 
@@ -60,16 +61,9 @@ class AppRoutes {
         return MaterialPageRoute(builder: (_) => const ExploreScreen());
 
       default:
-        return MaterialPageRoute(
-          builder: (_) => const Scaffold(
-            body: Center(
-              child: Text(
-                'Ruta no encontrada',
-                style: TextStyle(fontSize: 16),
-              ),
-            ),
-          ),
-        );
+      return MaterialPageRoute(
+        builder: (_) => const AuthGate(),
+      );
     }
   }
 }

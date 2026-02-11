@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'core/theme/app_theme.dart';
 import 'core/routes/app_routes.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
+import 'features/auth/auth_gate.dart';
 
 
 void main() async {
@@ -25,7 +25,7 @@ class AikoraSoraApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Aikōra Sora',
       theme: AppTheme.lightTheme,
-      initialRoute: AppRoutes.welcome,
+      home: const AuthGate(),
       onGenerateRoute: AppRoutes.generateRoute,
     );
   }

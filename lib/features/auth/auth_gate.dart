@@ -3,23 +3,42 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../home/home_screen.dart';
 import 'welcome/welcome_screen.dart';
+import '../profile/services/profile_service.dart';
 
-class AuthGate extends StatelessWidget {
+class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<AuthState>(
-      stream: Supabase.instance.client.auth.onAuthStateChange,
-      builder: (context, snapshot) {
-        final session =
-            Supabase.instance.client.auth.currentSession;
+  State<AuthGate> createState() => _AuthGateState();
+}
 
-        if (session != null) {
-          return const HomeScreen();
-        } else {
-          return const WelcomeScreen();
+class _AuthGateState extends State<AuthGate> {
+  Future<void>? _profileFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user != null) {
+      _profileFuture = ProfileService().createOrUpdateProfile(user);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = Supabase.instance.client.auth.currentUser;
+
+    if (user == null) return const WelcomeScreen();
+
+    return FutureBuilder<void>(
+      future: _profileFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
         }
+        return const HomeScreen();
       },
     );
   }

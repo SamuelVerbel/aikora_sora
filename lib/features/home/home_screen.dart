@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:flutter_application_1/core/constants/app_colors.dart';
+import '../../../core/constants/app_colors.dart';
 import '../../../core/routes/app_routes.dart';
-import '../profile/services/profile_service.dart';
+import '/features/profile/services/profile_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,6 +15,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final user = Supabase.instance.client.auth.currentUser;
 
   String userName = 'Viajero';
+  String? userAvatar;
   bool isLoading = true;
 
   @override
@@ -24,17 +25,19 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadProfile() async {
-    if (user == null) return;
+    if (user == null) {
+      setState(() => isLoading = false);
+      return;
+    }
 
     final profile = await ProfileService().getProfile(user!.id);
 
-    if (profile != null && profile['name'] != null) {
+    if (mounted) {
       setState(() {
-        userName = profile['name'];
+        userName = profile?['name'] ?? 'Viajero';
+        userAvatar = profile?['avatar'];
         isLoading = false;
       });
-    } else {
-      setState(() => isLoading = false);
     }
   }
 
@@ -73,22 +76,41 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _welcomeSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
       children: [
-        Text(
-          'Hola, $userName 👋',
-          style: const TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w600,
-          ),
+        // Avatar con fallback si no hay imagen
+        CircleAvatar(
+          radius: 30,
+          backgroundImage: userAvatar != null ? NetworkImage(userAvatar!) : null,
+          backgroundColor: AppColors.accent.withOpacity(0.2),
+          child: userAvatar == null
+              ? Text(
+                  userName.isNotEmpty ? userName[0] : 'V',
+                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                )
+              : null,
         ),
-        const SizedBox(height: 12),
-        const Text(
-          '¿A dónde quieres viajar hoy?',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Hola, $userName 👋',
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                '¿A dónde quieres viajar hoy?',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
         ),
       ],

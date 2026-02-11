@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/core/constants/app_colors.dart';
+import 'package:aikora_sora/core/constants/app_colors.dart';
 
 class PlanTripScreen extends StatelessWidget {
   const PlanTripScreen({super.key});
