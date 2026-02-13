@@ -238,7 +238,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: SwitchListTile(
         title: Text(title),
         value: value,
-        activeColor: AppColors.accent,
+        activeThumbColor: AppColors.accent,
         onChanged: onChanged,
       ),
     );
