@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/routes/app_routes.dart';
-import '../../profile/services/profile_service.dart';
+import '../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,67 +14,73 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  bool isLoading = false;
+  final _authService = AuthService();
+  bool _isLoading = false;
 
-  Future<void> _login() async {
+  Future<void> _loginWithEmail() async {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Completa todos los campos')),
-      );
+      _showErrorSnackBar('Completa todos los campos');
       return;
     }
 
-    setState(() => isLoading = true);
+    setState(() => _isLoading = true);
 
     try {
-      await Supabase.instance.client.auth.signInWithPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
+      await _authService.signInWithEmail(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
       );
-
-      final user = Supabase.instance.client.auth.currentUser;
-      if (user == null) throw const AuthException('No se pudo iniciar sesión');
-
-      await ProfileService().createOrUpdateProfile(user);
-
-      if (!mounted) return;
-      Navigator.pushReplacementNamed(context, AppRoutes.home);
+      
+      // La navegación se maneja en AuthGate
     } on AuthException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message)),
-      );
-    } catch (_) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error inesperado')),
-      );
+      _showErrorSnackBar(e.message);
+    } catch (e) {
+      _showErrorSnackBar('Error inesperado: $e');
     } finally {
-      if (mounted) setState(() => isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   Future<void> _loginWithGoogle() async {
-    try {
-      await Supabase.instance.client.auth.signInWithOAuth(
-        OAuthProvider.google,
-        redirectTo: 'aikorasora://login-callback/',
-      );
+    setState(() => _isLoading = true);
 
-      // Espera a que el usuario sea registrado automáticamente
-      final user = Supabase.instance.client.auth.currentUser;
-      if (user != null) {
-        await ProfileService().createOrUpdateProfile(user);
-        if (!mounted) return;
-        Navigator.pushReplacementNamed(context, AppRoutes.home);
-      }
+    try {
+      print('🔄 Iniciando autenticación con Google...');
+      
+      await _authService.signInWithGoogle();
+      
+      print('✅ Llamada a signInWithGoogle completada');
+      
+      // Mensaje de éxito
+      _showSuccessSnackBar('Redirigiendo a Google...');
+      
     } on AuthException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message)),
-      );
-    } catch (_) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error con Google')),
-      );
+      print('❌ Error de autenticación: ${e.message}');
+      _showErrorSnackBar('Error: ${e.message}');
+    } catch (e) {
+      print('❌ Error inesperado: $e');
+      _showErrorSnackBar('Error inesperado: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+
+  void _showSuccessSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.green,
+      ),
+    );
   }
 
   @override
@@ -107,20 +113,23 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            isLoading
+            _isLoading
                 ? const CircularProgressIndicator()
                 : SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: _login,
+                      onPressed: _loginWithEmail,
                       child: const Text('Ingresar'),
                     ),
                   ),
             const SizedBox(height: 20),
-            Row(
-              children: const [
+            const Row(
+              children: [
                 Expanded(child: Divider()),
-                Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: Text('O')),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8),
+                  child: Text('O'),
+                ),
                 Expanded(child: Divider()),
               ],
             ),
@@ -128,9 +137,13 @@ class _LoginScreenState extends State<LoginScreen> {
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
-                icon: const Icon(Icons.login),
+                icon: Image.asset(
+                  'assets/google.png',
+                  width: 24,
+                  height: 24,
+                ),
                 label: const Text('Continuar con Google'),
-                onPressed: _loginWithGoogle,
+                onPressed: _isLoading ? null : _loginWithGoogle,
               ),
             ),
             const SizedBox(height: 24),
@@ -139,9 +152,11 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 const Text('¿No tienes cuenta?'),
                 TextButton(
-                  onPressed: () {
-                    Navigator.pushNamed(context, AppRoutes.register);
-                  },
+                  onPressed: _isLoading
+                      ? null
+                      : () {
+                          Navigator.pushNamed(context, AppRoutes.register);
+                        },
                   child: const Text('Crear cuenta'),
                 ),
               ],

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../core/constants/app_colors.dart';
+import '../../../core/constants/app_colors.dart';
+import '../explore/models/destination_model.dart';
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
@@ -11,27 +12,24 @@ class ExploreScreen extends StatefulWidget {
 class _ExploreScreenState extends State<ExploreScreen> {
   String query = '';
 
-  final List<_Destination> destinations = const [
-    _Destination(
+  final List<Destination> destinations = [
+    Destination(
       title: 'Cartagena de Indias',
       country: 'Colombia',
       description: 'Historia, playas y cultura',
-      imageUrl:
-          'https://source.unsplash.com/featured/?cartagena,beach,city',
+      imageUrl: 'https://source.unsplash.com/featured/?cartagena,beach,city',
     ),
-    _Destination(
+    Destination(
       title: 'Kyoto',
       country: 'Japón',
       description: 'Templos, tradición y naturaleza',
-      imageUrl:
-          'https://source.unsplash.com/featured/?kyoto,japan,temple',
+      imageUrl: 'https://source.unsplash.com/featured/?kyoto,japan,temple',
     ),
-    _Destination(
+    Destination(
       title: 'París',
       country: 'Francia',
       description: 'Arte, gastronomía y romance',
-      imageUrl:
-          'https://source.unsplash.com/featured/?paris,eiffel',
+      imageUrl: 'https://source.unsplash.com/featured/?paris,eiffel',
     ),
   ];
 
@@ -79,12 +77,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     itemCount: filteredDestinations.length,
                     itemBuilder: (context, index) {
                       final destination = filteredDestinations[index];
-                      return DestinationCard(
-                        title: destination.title,
-                        country: destination.country,
-                        description: destination.description,
-                        imageUrl: destination.imageUrl,
-                      );
+                      return DestinationCard(destination: destination);
                     },
                   ),
           ),
@@ -95,39 +88,15 @@ class _ExploreScreenState extends State<ExploreScreen> {
 }
 
 /* =========================
-   MODELO SIMPLE (LOCAL)
-========================= */
-
-class _Destination {
-  final String title;
-  final String country;
-  final String description;
-  final String imageUrl;
-
-  const _Destination({
-    required this.title,
-    required this.country,
-    required this.description,
-    required this.imageUrl,
-  });
-}
-
-/* =========================
    CARD DE DESTINO
 ========================= */
 
 class DestinationCard extends StatelessWidget {
-  final String title;
-  final String country;
-  final String description;
-  final String imageUrl;
+  final Destination destination;
 
   const DestinationCard({
     super.key,
-    required this.title,
-    required this.country,
-    required this.description,
-    required this.imageUrl,
+    required this.destination,
   });
 
   @override
@@ -146,7 +115,7 @@ class DestinationCard extends StatelessWidget {
               top: Radius.circular(16),
             ),
             child: Image.network(
-              imageUrl,
+              destination.imageUrl,
               height: 180,
               width: double.infinity,
               fit: BoxFit.cover,
@@ -166,7 +135,7 @@ class DestinationCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  title,
+                  destination.title,
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -174,13 +143,13 @@ class DestinationCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  country,
+                  destination.country,
                   style: TextStyle(
                     color: Colors.grey[600],
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(description),
+                Text(destination.description),
                 const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
@@ -189,7 +158,11 @@ class DestinationCard extends StatelessWidget {
                       backgroundColor: AppColors.accent,
                     ),
                     onPressed: () {
-                      // luego navegamos al detalle
+                      Navigator.pushNamed(
+                        context,
+                        '/destination-detail',
+                        arguments: destination,
+                      );
                     },
                     child: const Text('Ver más'),
                   ),

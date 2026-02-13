@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/routes/app_routes.dart';
-import '/features/profile/services/profile_service.dart';
+import '../auth/services/profile_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -41,35 +41,30 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _logout() async {
-    await Supabase.instance.client.auth.signOut();
-    if (!mounted) return;
-    Navigator.pushReplacementNamed(context, AppRoutes.login);
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Aikōra Sora'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _logout,
-          ),
-        ],
-      ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _welcomeSection(),
-                  const SizedBox(height: 30),
-                  _mainActions(),
-                ],
+          : SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _welcomeSection(),
+                    const SizedBox(height: 30),
+                    _searchBar(),
+                    const SizedBox(height: 30),
+                    _sectionTitle("Recomendado para ti"),
+                    const SizedBox(height: 16),
+                    _horizontalDestinations(),
+                    const SizedBox(height: 30),
+                    _sectionTitle("Explora por categoría"),
+                    const SizedBox(height: 16),
+                    _categories(),
+                  ],
+                ),
               ),
             ),
     );
@@ -78,113 +73,154 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _welcomeSection() {
     return Row(
       children: [
-        // Avatar con fallback si no hay imagen
         CircleAvatar(
-          radius: 30,
-          backgroundImage: userAvatar != null ? NetworkImage(userAvatar!) : null,
+          radius: 28,
           backgroundColor: AppColors.accent.withOpacity(0.2),
+          backgroundImage:
+              userAvatar != null ? NetworkImage(userAvatar!) : null,
           child: userAvatar == null
               ? Text(
                   userName.isNotEmpty ? userName[0] : 'V',
-                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                      fontSize: 20, fontWeight: FontWeight.bold),
                 )
               : null,
         ),
-        const SizedBox(width: 16),
+        const SizedBox(width: 14),
         Expanded(
+          child: Text(
+            'Hola, $userName 👋\n¿A dónde viajamos hoy?',
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        IconButton(
+          icon: const Icon(Icons.notifications_outlined),
+          onPressed: () {
+            //Navigator.pushNamed(context, AppRoutes.notifications);
+          },
+        )
+      ],
+    );
+  }
+
+  Widget _searchBar() {
+    return GestureDetector(
+      onTap: () {
+        Navigator.pushNamed(context, AppRoutes.explore);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.search),
+            SizedBox(width: 10),
+            Text("Buscar destinos, países..."),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _sectionTitle(String title) {
+    return Text(
+      title,
+      style: const TextStyle(
+        fontSize: 22,
+        fontWeight: FontWeight.bold,
+      ),
+    );
+  }
+
+  Widget _horizontalDestinations() {
+    return SizedBox(
+      height: 190,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          _destinationCard(
+            "Cartagena",
+            "Colombia",
+            "https://images.unsplash.com/photo-1507525428034-b723cf961d3e",
+          ),
+          _destinationCard(
+            "Kyoto",
+            "Japón",
+            "https://images.unsplash.com/photo-1493558103817-58b2924bce98",
+          ),
+          _destinationCard(
+            "Santorini",
+            "Grecia",
+            "https://images.unsplash.com/photo-1469474968028-56623f02e42e",
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _destinationCard(String title, String country, String image) {
+    return Container(
+      width: 160,
+      margin: const EdgeInsets.only(right: 16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        image: DecorationImage(
+          image: NetworkImage(image),
+          fit: BoxFit.cover,
+        ),
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            begin: Alignment.bottomCenter,
+            end: Alignment.topCenter,
+            colors: [
+              Colors.black.withOpacity(0.7),
+              Colors.transparent
+            ],
+          ),
+        ),
+        child: Align(
+          alignment: Alignment.bottomLeft,
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Hola, $userName 👋',
+                title,
                 style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w600,
-                ),
+                    color: Colors.white, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 6),
-              const Text(
-                '¿A dónde quieres viajar hoy?',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
+              Text(
+                country,
+                style: const TextStyle(color: Colors.white70),
               ),
             ],
           ),
         ),
-      ],
-    );
-  }
-
-  Widget _mainActions() {
-    return Column(
-      children: [
-        _actionCard(
-          icon: Icons.auto_awesome,
-          title: 'Planear viaje con IA',
-          subtitle: 'Recomendaciones personalizadas',
-          onTap: () {
-            Navigator.pushNamed(context, AppRoutes.planTrip);
-          },
-        ),
-        const SizedBox(height: 16),
-        _actionCard(
-          icon: Icons.explore,
-          title: 'Explorar destinos',
-          subtitle: 'Descubre lugares increíbles',
-          onTap: () {
-            Navigator.pushNamed(context, AppRoutes.explore);
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _actionCard({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: AppColors.accent.withOpacity(0.08),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: 36, color: AppColors.accent),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(Icons.arrow_forward_ios, size: 16),
-          ],
-        ),
       ),
+    );
+  }
+
+  Widget _categories() {
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      children: const [
+        Chip(label: Text("Playa")),
+        Chip(label: Text("Cultura")),
+        Chip(label: Text("Aventura")),
+        Chip(label: Text("Gastronomía")),
+        Chip(label: Text("Montaña")),
+      ],
     );
   }
 }

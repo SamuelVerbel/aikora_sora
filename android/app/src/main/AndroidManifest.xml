@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.flutter_application_1">
+    package="com.aikorasora.app">
 
     <!-- Permiso necesario para internet -->
     <uses-permission android:name="android.permission.INTERNET"/>
@@ -31,7 +31,7 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
-                    android:scheme="aikorasora"
+                    android:scheme="com.aikorasora.app"
                     android:host="login-callback" /> <!-- CORREGIDO -->
             </intent-filter>
 

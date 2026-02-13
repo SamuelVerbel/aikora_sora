@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/routes/app_routes.dart';
-import '../../profile/services/profile_service.dart';
+import '../services/auth_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -15,68 +14,70 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _nameController = TextEditingController();
-  bool isLoading = false;
+  final _authService = AuthService();
+  bool _isLoading = false;
 
-  Future<void> _register() async {
+  Future<void> _registerWithEmail() async {
     if (_emailController.text.isEmpty ||
         _passwordController.text.isEmpty ||
         _nameController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Completa todos los campos')),
-      );
+      _showErrorSnackBar('Completa todos los campos');
       return;
     }
 
-    setState(() => isLoading = true);
+    if (_passwordController.text.length < 6) {
+      _showErrorSnackBar('La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+
+    setState(() => _isLoading = true);
 
     try {
-      await Supabase.instance.client.auth.signUp(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
+      await _authService.signUpWithEmail(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+        _nameController.text.trim(),
       );
-
-      final user = Supabase.instance.client.auth.currentUser;
-      if (user == null) throw const AuthException('No se pudo registrar');
-
-      await ProfileService().createOrUpdateProfile(user);
-
-      if (!mounted) return;
-      Navigator.pushReplacementNamed(context, AppRoutes.home);
-    } on AuthException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message)),
-      );
-    } catch (_) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error inesperado')),
-      );
+      
+      // La navegación se maneja en AuthGate
+      _showSuccessSnackBar('¡Cuenta creada! Revisa tu email para confirmar.');
+    } catch (e) {
+      _showErrorSnackBar('Error: $e');
     } finally {
-      if (mounted) setState(() => isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   Future<void> _registerWithGoogle() async {
-    try {
-      await Supabase.instance.client.auth.signInWithOAuth(
-        OAuthProvider.google,
-        redirectTo: 'aikorasora://login-callback/',
-      );
+    setState(() => _isLoading = true);
 
-      final user = Supabase.instance.client.auth.currentUser;
-      if (user != null) {
-        await ProfileService().createOrUpdateProfile(user);
-        if (!mounted) return;
-        Navigator.pushReplacementNamed(context, AppRoutes.home);
-      }
-    } on AuthException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message)),
-      );
-    } catch (_) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error con Google')),
-      );
+    try {
+      await _authService.signInWithGoogle();
+      
+      // La navegación se maneja en AuthGate
+    } catch (e) {
+      _showErrorSnackBar('Error con Google: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+
+  void _showSuccessSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.green,
+      ),
+    );
   }
 
   @override
@@ -94,7 +95,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             TextField(
               controller: _nameController,
               decoration: const InputDecoration(
-                labelText: 'Nombre',
+                labelText: 'Nombre completo',
                 border: OutlineInputBorder(),
               ),
             ),
@@ -112,25 +113,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
               controller: _passwordController,
               obscureText: true,
               decoration: const InputDecoration(
-                labelText: 'Contraseña',
+                labelText: 'Contraseña (mínimo 6 caracteres)',
                 border: OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 24),
-            isLoading
+            _isLoading
                 ? const CircularProgressIndicator()
                 : SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: _register,
+                      onPressed: _registerWithEmail,
                       child: const Text('Registrarse'),
                     ),
                   ),
             const SizedBox(height: 20),
-            Row(
-              children: const [
+            const Row(
+              children: [
                 Expanded(child: Divider()),
-                Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: Text('O')),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8),
+                  child: Text('O'),
+                ),
                 Expanded(child: Divider()),
               ],
             ),
@@ -138,9 +142,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
-                icon: const Icon(Icons.login),
+                icon: Image.asset(
+                  'assets/google.png',
+                  width: 24,
+                  height: 24,
+                ),
                 label: const Text('Continuar con Google'),
-                onPressed: _registerWithGoogle,
+                onPressed: _isLoading ? null : _registerWithGoogle,
               ),
             ),
             const SizedBox(height: 24),
@@ -149,9 +157,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
               children: [
                 const Text('¿Ya tienes cuenta?'),
                 TextButton(
-                  onPressed: () {
-                    Navigator.pushNamed(context, AppRoutes.login);
-                  },
+                  onPressed: _isLoading
+                      ? null
+                      : () {
+                          Navigator.pushNamed(context, AppRoutes.login);
+                        },
                   child: const Text('Iniciar sesión'),
                 ),
               ],
