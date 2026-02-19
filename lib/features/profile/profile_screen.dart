@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../core/constants/app_colors.dart';
+
+import '../../core/theme/app_colors.dart';
+import '../../providers/theme_provider.dart';
 import '../auth/services/preferences_service.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -51,19 +54,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
     final userName = user?.email?.split('@').first ?? "Viajero";
     final email = user?.email ?? "correo@ejemplo.com";
 
     return Scaffold(
+      appBar: AppBar(
+        title: const Text("Perfil"),
+        centerTitle: true,
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const SizedBox(height: 10),
 
-              // 👤 Avatar
+              /// 🌙 DARK MODE SWITCH
+              Card(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: SwitchListTile(
+                  title: const Text("Modo Oscuro"),
+                  secondary: Icon(
+                    themeProvider.isDarkMode
+                        ? Icons.dark_mode
+                        : Icons.light_mode,
+                    color: AppColors.accent,
+                  ),
+                  value: themeProvider.isDarkMode,
+                  onChanged: (value) {
+                    themeProvider.toggleTheme(value);
+                  },
+                ),
+              ),
+
+              const SizedBox(height: 30),
+
+              /// 👤 USER INFO
               CircleAvatar(
                 radius: 50,
                 backgroundColor: AppColors.accent.withOpacity(0.2),
@@ -86,28 +114,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
 
-              const SizedBox(height: 6),
-
               Text(
                 email,
-                style: TextStyle(
-                  color: Colors.grey[600],
-                ),
+                style: Theme.of(context).textTheme.bodyMedium,
               ),
 
-              const SizedBox(height: 20),
-
-              OutlinedButton.icon(
-                onPressed: () {},
-                icon: const Icon(Icons.edit),
-                label: const Text("Editar perfil"),
-              ),
-
-              const SizedBox(height: 40),
+              const SizedBox(height: 30),
 
               _sectionTitle("Preferencias de viaje"),
-
-              const SizedBox(height: 16),
 
               _preferenceSwitch(
                 "Naturaleza",
@@ -127,39 +141,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 (v) => setState(() => likesFood = v),
               ),
 
-              const SizedBox(height: 30),
+              const SizedBox(height: 20),
 
-              _sectionTitle("Idioma"),
-
-              const SizedBox(height: 10),
-
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.shade300),
-                ),
-                child: DropdownButton<String>(
-                  value: selectedLanguage,
-                  isExpanded: true,
-                  underline: const SizedBox(),
-                  items: languages.entries.map((entry) {
-                    return DropdownMenuItem(
-                      value: entry.key,
-                      child: Text(entry.value),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    setState(() => selectedLanguage = value!);
-                  },
-                ),
-              ),
-
-              const SizedBox(height: 30),
-
-              _sectionTitle("Presupuesto aproximado"),
-
-              const SizedBox(height: 10),
+              _sectionTitle("Presupuesto"),
 
               Slider(
                 min: 100,
@@ -173,18 +157,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 },
               ),
 
-              const SizedBox(height: 30),
+              const SizedBox(height: 20),
 
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.accent,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
                   onPressed: () async {
                     await PreferencesService.savePreferences(
                       nature: likesNature,
@@ -203,8 +180,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   child: const Text("Guardar cambios"),
                 ),
               ),
-
-              const SizedBox(height: 30),
             ],
           ),
         ),
@@ -215,11 +190,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _sectionTitle(String title) {
     return Align(
       alignment: Alignment.centerLeft,
-      child: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Text(
+          title,
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
     );
@@ -231,14 +209,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     Function(bool) onChanged,
   ) {
     return Card(
-      elevation: 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
       child: SwitchListTile(
         title: Text(title),
         value: value,
-        activeThumbColor: AppColors.accent,
+        activeColor: AppColors.accent,
         onChanged: onChanged,
       ),
     );

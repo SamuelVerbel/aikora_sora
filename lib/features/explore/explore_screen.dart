@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../../core/constants/app_colors.dart';
 import '../explore/models/destination_model.dart';
 import '../explore/data/destinations_repository.dart';
+import '../../core/routes/app_routes.dart';
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
@@ -11,20 +11,42 @@ class ExploreScreen extends StatefulWidget {
 }
 
 class _ExploreScreenState extends State<ExploreScreen> {
-  String query = '';
+  final _repository = DestinationsRepository();
+  List<Destination> _allDestinations = [];
+  List<Destination> _filtered = [];
+  bool _isLoading = true;
+  String _query = '';
 
-  // 🔥 Ahora vienen del Repository (NO hardcode aquí)
-  final List<Destination> destinations =
-      DestinationsRepository.destinations;
+  @override
+  void initState() {
+    super.initState();
+    _loadDestinations();
+  }
+
+  Future<void> _loadDestinations() async {
+    final data = await _repository.getDestinations();
+    if (mounted) {
+      setState(() {
+        _allDestinations = data;
+        _filtered = data;
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _onSearch(String value) {
+    setState(() {
+      _query = value;
+      _filtered = _allDestinations.where((d) {
+        return d.title.toLowerCase().contains(_query.toLowerCase()) ||
+            d.country.toLowerCase().contains(_query.toLowerCase()) ||
+            d.city.toLowerCase().contains(_query.toLowerCase());
+      }).toList();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    final filteredDestinations = destinations.where((d) {
-      return d.title.toLowerCase().contains(query.toLowerCase()) ||
-          d.country.toLowerCase().contains(query.toLowerCase()) ||
-          d.city.toLowerCase().contains(query.toLowerCase());
-    }).toList();
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Explorar destinos'),
@@ -43,29 +65,33 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   borderRadius: BorderRadius.circular(14),
                 ),
               ),
-              onChanged: (value) {
-                setState(() => query = value);
-              },
+              onChanged: _onSearch,
             ),
           ),
 
-          // 📄 Lista / Estado vacío
+          // 📄 Contenido
           Expanded(
-            child: filteredDestinations.isEmpty
-                ? const Center(
-                    child: Text(
-                      'No se encontraron destinos 😕',
-                      style: TextStyle(fontSize: 16),
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: filteredDestinations.length,
-                    itemBuilder: (context, index) {
-                      final destination = filteredDestinations[index];
-                      return DestinationCard(destination: destination);
-                    },
-                  ),
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _filtered.isEmpty
+                    ? const Center(
+                        child: Text(
+                          'No se encontraron destinos 😕',
+                          style: TextStyle(fontSize: 16),
+                        ),
+                      )
+                    : RefreshIndicator(
+                        onRefresh: _loadDestinations, // Pull to refresh
+                        child: ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: _filtered.length,
+                          itemBuilder: (context, index) {
+                            return DestinationCard(
+                              destination: _filtered[index],
+                            );
+                          },
+                        ),
+                      ),
           ),
         ],
       ),
@@ -76,31 +102,23 @@ class _ExploreScreenState extends State<ExploreScreen> {
 /* =========================
    CARD DE DESTINO
 ========================= */
-
 class DestinationCard extends StatelessWidget {
   final Destination destination;
 
-  const DestinationCard({
-    super.key,
-    required this.destination,
-  });
+  const DestinationCard({super.key, required this.destination});
 
   @override
   Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.only(bottom: 18),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       elevation: 6,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 📸 Imagen principal
+          // 📸 Imagen con Hero animation
           ClipRRect(
-            borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(20),
-            ),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
             child: Hero(
               tag: destination.id,
               child: Image.network(
@@ -111,16 +129,13 @@ class DestinationCard extends StatelessWidget {
                 errorBuilder: (_, __, ___) => Container(
                   height: 200,
                   color: Colors.grey[300],
-                  child: const Icon(
-                    Icons.image_not_supported,
-                    size: 40,
-                  ),
+                  child: const Icon(Icons.image_not_supported, size: 40),
                 ),
               ),
             ),
           ),
 
-          // 📄 Información
+          // 📄 Info
           Padding(
             padding: const EdgeInsets.all(18),
             child: Column(
@@ -133,27 +148,18 @@ class DestinationCard extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-
                 const SizedBox(height: 4),
-
                 Text(
                   '${destination.city}, ${destination.country}',
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                  ),
+                  style: TextStyle(color: Colors.grey[600]),
                 ),
-
                 const SizedBox(height: 10),
-
                 Text(
                   destination.description,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-
                 const SizedBox(height: 12),
-
-                // ⭐ Rating real
                 Row(
                   children: [
                     const Icon(Icons.star, color: Colors.amber, size: 18),
@@ -164,14 +170,11 @@ class DestinationCard extends StatelessWidget {
                     ),
                   ],
                 ),
-
                 const SizedBox(height: 14),
-
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.accent,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),
@@ -180,7 +183,7 @@ class DestinationCard extends StatelessWidget {
                     onPressed: () {
                       Navigator.pushNamed(
                         context,
-                        '/destination-detail',
+                        AppRoutes.destinationDetail,
                         arguments: destination,
                       );
                     },

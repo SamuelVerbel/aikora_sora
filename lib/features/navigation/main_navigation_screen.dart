@@ -3,7 +3,7 @@ import '../home/home_screen.dart';
 import '../explore/explore_screen.dart';
 import '../trip/plan_trip_screen.dart';
 import '../profile/profile_screen.dart';
-import '../../../core/constants/app_colors.dart';
+import '../../core/theme/app_colors.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
