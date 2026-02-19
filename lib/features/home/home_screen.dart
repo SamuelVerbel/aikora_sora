@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../core/constants/app_colors.dart';
+import '../../core/theme/app_colors.dart';
 import '../../../core/routes/app_routes.dart';
 import '../auth/services/profile_service.dart';
 
@@ -48,20 +48,20 @@ class _HomeScreenState extends State<HomeScreen> {
           ? const Center(child: CircularProgressIndicator())
           : SafeArea(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _welcomeSection(),
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 32),
                     _searchBar(),
-                    const SizedBox(height: 30),
-                    _sectionTitle("Recomendado para ti"),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 40),
+                    _sectionHeader("Recomendado para ti"),
+                    const SizedBox(height: 20),
                     _horizontalDestinations(),
-                    const SizedBox(height: 30),
-                    _sectionTitle("Explora por categoría"),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 40),
+                    _sectionHeader("Explora por categoría"),
+                    const SizedBox(height: 20),
                     _categories(),
                   ],
                 ),
@@ -72,36 +72,47 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _welcomeSection() {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         CircleAvatar(
-          radius: 28,
-          backgroundColor: AppColors.accent.withOpacity(0.2),
+          radius: 26,
+          backgroundColor: AppColors.accent.withValues(alpha: 0.15),
           backgroundImage:
               userAvatar != null ? NetworkImage(userAvatar!) : null,
           child: userAvatar == null
               ? Text(
                   userName.isNotEmpty ? userName[0] : 'V',
                   style: const TextStyle(
-                      fontSize: 20, fontWeight: FontWeight.bold),
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 )
               : null,
         ),
-        const SizedBox(width: 14),
+        const SizedBox(width: 16),
         Expanded(
-          child: Text(
-            'Hola, $userName 👋\n¿A dónde viajamos hoy?',
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Hola, $userName 👋",
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                "Descubre tu próxima aventura",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
           ),
         ),
         IconButton(
           icon: const Icon(Icons.notifications_outlined),
-          onPressed: () {
-            //Navigator.pushNamed(context, AppRoutes.notifications);
-          },
-        )
+          onPressed: () {},
+        ),
       ],
     );
   }
@@ -112,28 +123,39 @@ class _HomeScreenState extends State<HomeScreen> {
         Navigator.pushNamed(context, AppRoutes.explore);
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         decoration: BoxDecoration(
-          color: Colors.grey[200],
-          borderRadius: BorderRadius.circular(14),
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: const Row(
           children: [
             Icon(Icons.search),
-            SizedBox(width: 10),
-            Text("Buscar destinos, países..."),
+            SizedBox(width: 12),
+            Text(
+              "Buscar destinos, países...",
+              style: TextStyle(color: Colors.grey),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _sectionTitle(String title) {
+  Widget _sectionHeader(String title) {
     return Text(
       title,
       style: const TextStyle(
-        fontSize: 22,
-        fontWeight: FontWeight.bold,
+        fontSize: 20,
+        fontWeight: FontWeight.w700,
+        letterSpacing: -0.3,
       ),
     );
   }
@@ -166,45 +188,66 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _destinationCard(String title, String country, String image) {
     return Container(
-      width: 160,
-      margin: const EdgeInsets.only(right: 16),
+      width: 180,
+      margin: const EdgeInsets.only(right: 18),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        image: DecorationImage(
-          image: NetworkImage(image),
-          fit: BoxFit.cover,
-        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          )
+        ],
       ),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: LinearGradient(
-            begin: Alignment.bottomCenter,
-            end: Alignment.topCenter,
-            colors: [
-              Colors.black.withOpacity(0.7),
-              Colors.transparent
-            ],
-          ),
-        ),
-        child: Align(
-          alignment: Alignment.bottomLeft,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.bold),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Stack(
+          children: [
+            Image.network(
+              image,
+              height: 200,
+              width: 180,
+              fit: BoxFit.cover,
+            ),
+            Container(
+              height: 200,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: [
+                    Colors.black.withValues(alpha: 0.6),
+                    Colors.transparent,
+                  ],
+                ),
               ),
-              Text(
-                country,
-                style: const TextStyle(color: Colors.white70),
+            ),
+            Positioned(
+              bottom: 16,
+              left: 16,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                    ),
+                  ),
+                  Text(
+                    country,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            )
+          ],
         ),
       ),
     );

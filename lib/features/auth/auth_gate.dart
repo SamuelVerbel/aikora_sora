@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -55,11 +57,11 @@ class _AuthGateState extends State<AuthGate> {
     try {
       print('👤 Usuario autenticado: ${user.email}');
 
-      await ProfileService().createOrUpdateProfile(user);
+      // Nuevo método: el trigger crea el perfil, aquí solo sincronizamos datos
+      await ProfileService().syncProfileAfterLogin(user);
 
       if (mounted) {
-        Navigator.of(context)
-            .pushReplacementNamed(AppRoutes.main);
+        Navigator.of(context).pushReplacementNamed(AppRoutes.main);
       }
     } catch (e) {
       print('Error manejando sesión: $e');
@@ -71,8 +73,7 @@ class _AuthGateState extends State<AuthGate> {
 
   void _redirectToWelcome() {
     if (mounted) {
-      Navigator.of(context)
-          .pushReplacementNamed(AppRoutes.welcome);
+      Navigator.of(context).pushReplacementNamed(AppRoutes.welcome);
     }
   }
 
