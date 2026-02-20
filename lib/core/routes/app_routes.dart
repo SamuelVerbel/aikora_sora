@@ -79,8 +79,11 @@ class AppRoutes {
         );
 
       case planTrip:
+        final dest = settings.arguments;
         return MaterialPageRoute(
-          builder: (_) => const PlanTripScreen(),
+          builder: (_) => PlanTripScreen(
+            preselectedDestination: dest is Destination ? dest : null,
+          ),
         );
 
       case explore:
@@ -97,13 +100,9 @@ class AppRoutes {
         );
 
       case planResult:
-        final args = settings.arguments as Map<String, String>;
+        final args = settings.arguments as Map<String, dynamic>;
         return MaterialPageRoute(
-          builder: (_) => PlanResultScreen(
-            destination: args['destination']!,
-            budget: args['budget']!,
-            type: args['type']!,
-          ),
+          builder: (_) => PlanResultScreen(args: args),
         );
 
       case reservations:
