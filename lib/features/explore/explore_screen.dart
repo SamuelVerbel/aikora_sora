@@ -67,22 +67,22 @@ class _ExploreScreenState extends State<ExploreScreen> {
     if (_categoryFilter != null && _categoryFilter!.isNotEmpty) {
       result = result.where((d) =>
         d.category.toLowerCase().contains(_categoryFilter!) ||
-        (d.tags?.any((t) => t.toLowerCase().contains(_categoryFilter!)) ?? false)
+        (d.tags.any((t) => t.toLowerCase().contains(_categoryFilter!)) ?? false)
       ).toList();
     }
 
     // Ordenar por distancia
     if (_sortByDistance && _userPosition != null) {
       result.sort((a, b) {
-        final distA = (a.latitude != null && a.longitude != null)
+        final distA = (a.longitude != null)
             ? LocationService.distanceInKm(
                 _userPosition!.latitude, _userPosition!.longitude,
-                a.latitude!, a.longitude!)
+                a.latitude, a.longitude)
             : double.infinity;
-        final distB = (b.latitude != null && b.longitude != null)
+        final distB = (b.longitude != null)
             ? LocationService.distanceInKm(
                 _userPosition!.latitude, _userPosition!.longitude,
-                b.latitude!, b.longitude!)
+                b.latitude, b.longitude)
             : double.infinity;
         return distA.compareTo(distB);
       });
@@ -350,12 +350,10 @@ class DestinationCard extends StatelessWidget {
   Widget build(BuildContext context) {
     // Calcular distancia si tenemos coordenadas
     String? distanceLabel;
-    if (userPosition != null &&
-        destination.latitude != null &&
-        destination.longitude != null) {
+    if (userPosition != null) {
       final km = LocationService.distanceInKm(
         userPosition!.latitude, userPosition!.longitude,
-        destination.latitude!, destination.longitude!,
+        destination.latitude, destination.longitude,
       );
       distanceLabel = LocationService.formatDistance(km);
     }
