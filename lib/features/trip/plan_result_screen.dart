@@ -3,8 +3,11 @@ import '../../core/theme/app_colors.dart';
 import '../../core/routes/app_routes.dart';
 import '../reservations/reservations_service.dart';
 
+/// Muestra el itinerario "Generado por IA". 
+/// NOTA: Actualmente es una IA *simulada* localmente mediante arreglos y lógica matemática,
+/// hasta que en el futuro la conectemos a una API real (como Gemini u OpenAI).
 class PlanResultScreen extends StatefulWidget {
-  final Map<String, dynamic> args;
+  final Map<String, dynamic> args; // Recibe toda la info del formulario anterior
 
   const PlanResultScreen({super.key, required this.args});
 
@@ -13,9 +16,10 @@ class PlanResultScreen extends StatefulWidget {
 }
 
 class _PlanResultScreenState extends State<PlanResultScreen> {
-  bool _isSaving = false;
-  bool _saved = false;
+  bool _isSaving = false; // Controla el spinner al guardar en base de datos
+  bool _saved = false;    // Indica si el plan ya se guardó en "Mis Reservas"
 
+  // ── Getters para extraer los argumentos de forma limpia ──────────────
   String get _destinationName =>
       widget.args['destination_name'] ?? 'Destino';
   String? get _destinationId => widget.args['destination_id'];
@@ -27,11 +31,12 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
   List<String> get _activities =>
       List<String>.from(widget.args['activities'] ?? []);
 
+  /// Calcula cuántos días dura el viaje
   int get _numDays {
     if (_startDate != null && _endDate != null) {
       return _endDate!.difference(_startDate!).inDays + 1;
     }
-    return 3;
+    return 3; // Por defecto 3 días si hay algún error
   }
 
   String _formatDate(DateTime? date) {
@@ -43,8 +48,10 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
     return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 
-  // IA local: distribuye actividades reales entre los días
+  /// 🤖 LOGICA IA SIMULADA 🤖
+  /// Distribuye las actividades del destino entre el número de días disponibles.
   List<Map<String, String>> _buildItinerary() {
+    // Títulos de ejemplo según el estilo de viaje
     final Map<String, List<String>> titles = {
       'Cultural': ['Exploración histórica', 'Arte y tradición', 'Día de museos', 'Patrimonio local'],
       'Aventura': ['Actividades al aire libre', 'Exploración extrema', 'Naturaleza salvaje', 'Adrenalina máxima'],
@@ -52,12 +59,16 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
       'Gastronómico': ['Sabores locales', 'Tour de mercados', 'Cocina gourmet', 'Cenas especiales'],
       'Familiar': ['Diversión en familia', 'Juegos y parques', 'Paseo familiar', 'Experiencias compartidas'],
     };
+    
     final dayTitles = titles[_type] ?? titles['Cultural']!;
     final acts = List<String>.from(_activities);
     final List<Map<String, String>> days = [];
 
+    // Por cada día del viaje, crea un objeto de itinerario
     for (int i = 0; i < _numDays; i++) {
       final List<String> dayActs = [];
+      
+      // Si el destino tiene actividades en BD, reparte X actividades por día
       if (acts.isNotEmpty) {
         final perDay = (acts.length / _numDays).ceil();
         final start = (i * perDay).clamp(0, acts.length);
@@ -65,10 +76,11 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
         if (start < acts.length) dayActs.addAll(acts.sublist(start, end));
       }
 
+      // Si nos quedamos sin actividades reales para mostrar en un día, usamos textos genéricos
       final description = dayActs.isNotEmpty
           ? dayActs
-              .map((a) => a[0].toUpperCase() + a.substring(1))
-              .join(' · ')
+              .map((a) => a[0].toUpperCase() + a.substring(1)) // Mayúscula inicial
+              .join(' · ') // Las une con un punto medio
           : _genericDesc(i);
 
       days.add({
@@ -83,6 +95,7 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
     return days;
   }
 
+  /// Textos de relleno por si el destino de Supabase no tiene suficientes actividades reales guardadas
   String _genericDesc(int day) {
     final Map<String, List<String>> descs = {
       'Cultural': [
@@ -115,7 +128,9 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
     return list[day % list.length];
   }
 
+  /// Guarda el itinerario en la tabla `reservations` de Supabase
   Future<void> _saveReservation() async {
+    // Validaciones de seguridad antes de guardar
     if (_destinationId == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text(
@@ -134,6 +149,7 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
 
     setState(() => _isSaving = true);
     try {
+      // Llama a Supabase para inyectar los datos en la tabla (Requiere RLS configurado)
       await ReservationsService().createReservation(
         destinationId: _destinationId!,
         startDate: _startDate!,
@@ -141,8 +157,9 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
         travelers: _travelers,
         notes: 'Plan IA · Estilo: $_type · Presupuesto: \$$_budget USD',
       );
+      
       if (mounted) {
-        setState(() => _saved = true);
+        setState(() => _saved = true); // Cambia el estado del botón a verde (Guardado)
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text('✅ Reserva guardada exitosamente'),
           backgroundColor: Colors.green,
@@ -162,6 +179,7 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Generamos el itinerario justo al pintar la UI
     final itinerary = _buildItinerary();
 
     return Scaffold(
@@ -176,7 +194,7 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
                     fontSize: 26, fontWeight: FontWeight.bold)),
             const SizedBox(height: 14),
 
-            // Chips resumen
+            // ── Resumen de datos ingresados en pantalla anterior ───────────
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -200,11 +218,13 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
 
             const SizedBox(height: 30),
 
+            // ── Título del Itinerario ──────────────────────────────────────
             Row(children: [
               const Text('Itinerario generado por IA',
                   style: TextStyle(
                       fontSize: 20, fontWeight: FontWeight.w600)),
               const SizedBox(width: 8),
+              // Etiqueta que aclara que esto es simulado
               Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -224,7 +244,7 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
                 style: TextStyle(color: Colors.grey[500], fontSize: 13)),
             const SizedBox(height: 20),
 
-            // Días dinámicos
+            // ── Renderizado de Días (Tarjetas iterativas) ───────────────────
             ...itinerary
                 .map((day) => _DayCard(
                       day: day['day']!,
@@ -236,11 +256,12 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
 
             const SizedBox(height: 30),
 
-            // Botón guardar reserva
+            // ── Botón Final: Guardar en "Mis Reservas" ─────────────────────
             SizedBox(
               width: double.infinity,
               height: 54,
               child: ElevatedButton.icon(
+                // Cambia icono y texto dependiendo de si ya se guardó
                 icon: Icon(
                     _saved ? Icons.check_circle : Icons.bookmark_border,
                     color: Colors.white),
@@ -254,11 +275,13 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16)),
                 ),
+                // Se deshabilita si está guardando o si ya guardó
                 onPressed:
                     _saved || _isSaving ? null : _saveReservation,
               ),
             ),
 
+            // ── Botón extra que aparece solo DESPUÉS de guardar ─────────────
             if (_saved) ...[
               const SizedBox(height: 12),
               SizedBox(
@@ -285,6 +308,11 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
   }
 }
 
+// ────────────────────────────────────────────────────────────────────────────
+// COMPONENTES SECUNDARIOS
+// ────────────────────────────────────────────────────────────────────────────
+
+/// Pastilla gris para el resumen de presupuesto, fecha, etc.
 class _Chip extends StatelessWidget {
   final IconData icon;
   final String text;
@@ -310,6 +338,7 @@ class _Chip extends StatelessWidget {
   }
 }
 
+/// Tarjeta blanca con sombra que muestra la info de 1 día específico del itinerario
 class _DayCard extends StatelessWidget {
   final String day, date, title, description;
   const _DayCard(

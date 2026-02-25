@@ -3,7 +3,10 @@ import '../../core/theme/app_colors.dart';
 import '../../core/routes/app_routes.dart';
 import '../explore/models/destination_model.dart';
 
+/// Pantalla donde el usuario ingresa sus preferencias (fechas, presupuesto,
+/// estilo de viaje y número de personas) antes de pasárselas a la "IA".
 class PlanTripScreen extends StatefulWidget {
+  // Si el usuario llega desde la pantalla de detalle, este campo trae la info del lugar
   final Destination? preselectedDestination;
 
   const PlanTripScreen({super.key, this.preselectedDestination});
@@ -14,6 +17,8 @@ class PlanTripScreen extends StatefulWidget {
 
 class _PlanTripScreenState extends State<PlanTripScreen> {
   final _budgetController = TextEditingController();
+  
+  // Valores por defecto del formulario
   String _selectedType = 'Cultural';
   DateTime? _startDate;
   DateTime? _endDate;
@@ -29,17 +34,20 @@ class _PlanTripScreenState extends State<PlanTripScreen> {
     super.dispose();
   }
 
+  /// Abre el calendario nativo para seleccionar fecha de llegada o salida.
   Future<void> _pickDate(bool isStart) async {
     final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,
+      // Si es salida, sugerimos 2 días después. Si es llegada, 1 día después.
       initialDate: isStart
           ? now.add(const Duration(days: 1))
           : (_startDate?.add(const Duration(days: 1)) ??
               now.add(const Duration(days: 2))),
-      firstDate: now,
+      firstDate: now, // No permite planear viajes en el pasado
       lastDate: DateTime(now.year + 2),
       builder: (context, child) => Theme(
+        // Aplica el color principal de nuestra app al calendario de Flutter
         data: Theme.of(context).copyWith(
           colorScheme:
               const ColorScheme.light(primary: AppColors.accent),
@@ -47,10 +55,12 @@ class _PlanTripScreenState extends State<PlanTripScreen> {
         child: child!,
       ),
     );
+    
     if (picked != null) {
       setState(() {
         if (isStart) {
           _startDate = picked;
+          // Validar: si la fecha final quedó antes que la nueva inicial, bórrala
           if (_endDate != null && _endDate!.isBefore(picked)) {
             _endDate = null;
           }
@@ -61,6 +71,7 @@ class _PlanTripScreenState extends State<PlanTripScreen> {
     }
   }
 
+  /// Convierte el objeto DateTime a un formato legible (Ej: "14 Feb 2026")
   String _formatDate(DateTime? date) {
     if (date == null) return 'Seleccionar';
     const months = [
@@ -70,6 +81,7 @@ class _PlanTripScreenState extends State<PlanTripScreen> {
     return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 
+  /// Valida los datos y navega a la pantalla de Resultados pasándole todo el contexto
   void _generatePlan() {
     if (_budgetController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -82,6 +94,7 @@ class _PlanTripScreenState extends State<PlanTripScreen> {
       return;
     }
 
+    // Navega a PlanResultScreen y le pasa un Map con todos los datos recogidos
     Navigator.pushNamed(
       context,
       AppRoutes.planResult,
@@ -123,7 +136,7 @@ class _PlanTripScreenState extends State<PlanTripScreen> {
                   style: TextStyle(color: Colors.grey[600])),
               const SizedBox(height: 30),
 
-              // Destino pre-seleccionado
+              // ── 📍 Destino (Solo lectura, viene heredado) ───────────────
               Card(
                 elevation: 3,
                 shape: RoundedRectangleBorder(
@@ -158,7 +171,7 @@ class _PlanTripScreenState extends State<PlanTripScreen> {
 
               const SizedBox(height: 16),
 
-              // Fechas
+              // ── 📅 Selector de Fechas ──────────────────────────────────
               Row(children: [
                 Expanded(
                   child: _DateCard(
@@ -179,7 +192,7 @@ class _PlanTripScreenState extends State<PlanTripScreen> {
                 ),
               ]),
 
-              // Duración calculada
+              // ── ⏳ Cálculo automático de duración ──────────────────────
               if (_startDate != null && _endDate != null) ...[
                 const SizedBox(height: 10),
                 Container(
@@ -208,7 +221,7 @@ class _PlanTripScreenState extends State<PlanTripScreen> {
 
               const SizedBox(height: 16),
 
-              // Viajeros
+              // ── 👥 Contador de Viajeros ────────────────────────────────
               Card(
                 elevation: 3,
                 shape: RoundedRectangleBorder(
@@ -247,7 +260,7 @@ class _PlanTripScreenState extends State<PlanTripScreen> {
 
               const SizedBox(height: 16),
 
-              // Presupuesto
+              // ── 💰 Presupuesto ─────────────────────────────────────────
               Card(
                 elevation: 3,
                 shape: RoundedRectangleBorder(
@@ -271,7 +284,7 @@ class _PlanTripScreenState extends State<PlanTripScreen> {
 
               const SizedBox(height: 16),
 
-              // Tipo de viaje
+              // ── 🎒 Estilo de viaje (Filtros) ───────────────────────────
               const Text('Estilo de viaje',
                   style: TextStyle(
                       fontWeight: FontWeight.w600, fontSize: 15)),
@@ -299,6 +312,7 @@ class _PlanTripScreenState extends State<PlanTripScreen> {
 
               const SizedBox(height: 40),
 
+              // ── 🔥 Botón Generar ────────────────────────────────────────
               SizedBox(
                 width: double.infinity,
                 height: 54,
@@ -324,6 +338,7 @@ class _PlanTripScreenState extends State<PlanTripScreen> {
   }
 }
 
+/// Widget auxiliar para los selectores de fecha
 class _DateCard extends StatelessWidget {
   final String label;
   final String value;
