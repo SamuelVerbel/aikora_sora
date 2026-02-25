@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/routes/app_routes.dart';
 
+/// Primera pantalla que ve el usuario si NO tiene sesión activa.
+/// Su único propósito: presentar la marca y llevar al login o al registro.
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
 
@@ -9,30 +11,39 @@ class WelcomeScreen extends StatefulWidget {
   State<WelcomeScreen> createState() => _WelcomeScreenState();
 }
 
+/// SingleTickerProviderStateMixin: solo necesitamos 1 controlador aquí
 class _WelcomeScreenState extends State<WelcomeScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  late Animation<double> _fadeAnim;
-  late Animation<Offset> _slideAnim;
+  late Animation<double> _fadeAnim; // todo el contenido aparece con fade
+  late Animation<Offset> _slideAnim; // el contenido sube desde abajo
 
   @override
   void initState() {
     super.initState();
+
+    // Animación de 1.2 segundos que arranca al abrir la pantalla
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
     );
+
+    // Fade de 0 a 1 con curva suave
     _fadeAnim = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
+    
+    // Slide desde 30% debajo hasta posición original
     _slideAnim = Tween<Offset>(
       begin: const Offset(0, 0.3),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+    
+    // Ejecuta la animación al mostrar la pantalla
     _controller.forward();
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _controller.dispose(); // siempre liberar para evitar memory leaks
     super.dispose();
   }
 
@@ -40,12 +51,13 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
+        // Fondo degradado oscuro, igual que el Splash para mantener coherencia visual
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Color(0xFF0B1C2D), // Azul profundo
+              Color(0xFF0B1C2D), // Azul marino profundo
               Color(0xFF0F2744),
               Color(0xFF091520),
             ],
@@ -57,15 +69,17 @@ class _WelcomeScreenState extends State<WelcomeScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Spacer(flex: 2),
+                const Spacer(flex: 2), //espacio superior proporcional
 
-                // ✅ Logo real con fade + slide
+                // ── Logo + Título + Subtítulo ───────────────────────────
+                // Todo entra con fade y slide simultáneos para un efecto más dinámico
                 FadeTransition(
                   opacity: _fadeAnim,
                   child: SlideTransition(
                     position: _slideAnim,
                     child: Column(
                       children: [
+                        // Logo circular con sombra sutil para destacar
                         Image.asset(
                           'assets/logo/app_icon.png',
                           height: 120,
@@ -89,7 +103,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                           style: TextStyle(
                             fontSize: 17,
                             color: Colors.white60,
-                            height: 1.6,
+                            height: 1.6, //interlineado para mejor legibilidad en multilinea
                           ),
                         ),
                       ],
@@ -97,14 +111,14 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                   ),
                 ),
 
-                const Spacer(flex: 3),
+                const Spacer(flex: 3), //empuja los botones hacia abajo proporcionalmente
 
-                // Botones
+                // ── Botones de acción ───────────────────────────────────
                 FadeTransition(
                   opacity: _fadeAnim,
                   child: Column(
                     children: [
-                      // Crear cuenta
+                      // Botón primario → va a RegisterScreen
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
@@ -112,7 +126,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                               Navigator.pushNamed(context, AppRoutes.register),
                           style: ElevatedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 16),
-                            backgroundColor: AppColors.accent,
+                            backgroundColor: AppColors.accent, // verde-azulado
                             foregroundColor: Colors.white,
                             elevation: 0,
                             shape: RoundedRectangleBorder(
@@ -129,7 +143,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
                       const SizedBox(height: 14),
 
-                      // Iniciar sesión
+                      // Botón secundario (outlined) → va a LoginScreen
                       SizedBox(
                         width: double.infinity,
                         child: OutlinedButton(
@@ -154,7 +168,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
                       const SizedBox(height: 32),
 
-                      // Tagline inferior
+                      // Tagline inferior decorativo
                       const Text(
                         'Tu próxima aventura comienza aquí ✈️',
                         textAlign: TextAlign.center,

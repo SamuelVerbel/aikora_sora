@@ -4,6 +4,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/routes/app_routes.dart';
 import '../services/auth_service.dart';
 
+/// Pantalla de inicio de sesión. Soporta dos métodos: email/contraseña y Google OAuth.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -12,20 +13,28 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+
+  // Controladores de texto para leer los valores del formulario
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+
+  // Servicio de auth inyectado directamente
   final _authService = AuthService();
-  bool _isLoading = false;
-  bool _obscurePassword = true;
+
+  bool _isLoading = false; // bloquea botones mientras hay una llamada activa
+  bool _obscurePassword = true; // controla si la contraseña se ve o no
 
   @override
   void dispose() {
+    // Liberar controladores al salir para evitar memory leaks
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
+  /// Autenticar con email y contraseña. Si tiene éxito, AuthGate detecta el cambio de sesión y navega a Main.
   Future<void> _loginWithEmail() async {
+    // Validación mínima antes de hacer llamada a Supabase
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
       _showErrorSnackBar('Completa todos los campos');
       return;
@@ -33,18 +42,22 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
     try {
       await _authService.signInWithEmail(
-        _emailController.text.trim(),
+        _emailController.text.trim(), // trim() elimina espacios accidentales
         _passwordController.text.trim(),
       );
+      // No se navega aquí: AuthGate escucha onAuthStateChange y redirige solo
     } on AuthException catch (e) {
+      // AuthException viene de Supabase con mensaje legible (ej: "Invalid login credentials")
       _showErrorSnackBar(e.message);
     } catch (e) {
       _showErrorSnackBar('Error inesperado: $e');
     } finally {
+      // finally se ejecuta siempre, tanto si hubo error como si no
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
+  /// Autenticar con Google (OAuth externo). Abre el navegador del dispositivo para el flujo de Google.
   Future<void> _loginWithGoogle() async {
     setState(() => _isLoading = true);
     try {
@@ -77,9 +90,10 @@ class _LoginScreenState extends State<LoginScreen> {
       backgroundColor: const Color(0xFF0B1C2D),
       body: SafeArea(
         child: SingleChildScrollView(
+          // SingleChildScrollView evita overflow cuando abre el teclado
           child: Column(
             children: [
-              // Header con logo
+              // ── Header oscuro con logo ────────────────────────────────
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 40),
@@ -92,7 +106,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 child: Column(
                   children: [
-                    // Botón volver
+                    // Botón volver (pop cierra el login y regresa al Welcome)
                     Align(
                       alignment: Alignment.centerLeft,
                       child: Padding(
@@ -128,10 +142,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
 
-              // Formulario con card
+              // ── Formulario blanco (card flotante) ─────────────────────
               Container(
                 decoration: const BoxDecoration(
                   color: Colors.white,
+                  // Bordes redondeados arriba para efecto "sheet" sobre el header
                   borderRadius:
                       BorderRadius.vertical(top: Radius.circular(30)),
                 ),
@@ -141,7 +156,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     const SizedBox(height: 8),
 
-                    // Email
+                    // Campo email
                     _buildTextField(
                       controller: _emailController,
                       label: 'Correo electrónico',
@@ -150,7 +165,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Contraseña
+                    // Campo contraseña con toggle de visibilidad
                     _buildTextField(
                       controller: _passwordController,
                       label: 'Contraseña',
@@ -169,10 +184,11 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 28),
 
-                    // Botón ingresar
+                    // Botón principal de login
                     SizedBox(
                       height: 54,
                       child: ElevatedButton(
+                        // null deshabilita el botón mientras carga
                         onPressed: _isLoading ? null : _loginWithEmail,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
@@ -183,6 +199,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                         child: _isLoading
+                            // Spinner mientras procesa la petición
                             ? const SizedBox(
                                 height: 22,
                                 width: 22,
@@ -198,7 +215,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     const SizedBox(height: 24),
 
-                    // Divisor
+                    // Divisor visual "o continúa con"
                     Row(
                       children: [
                         const Expanded(child: Divider()),
@@ -228,6 +245,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
+                            // Logo de Google como asset local
                             Image.asset('assets/google.png',
                                 height: 22, width: 22),
                             const SizedBox(width: 12),
@@ -245,13 +263,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     const SizedBox(height: 28),
 
-                    // Link registro
+                    // Enlace hacia la pantalla de registro
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text('¿No tienes cuenta? ',
                             style: TextStyle(color: Colors.grey[600])),
                         GestureDetector(
+                          // Deshabilitado si hay carga en curso
                           onTap: _isLoading
                               ? null
                               : () => Navigator.pushNamed(
@@ -277,6 +296,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  /// Widget reutilizable para campos de texto del formulario. Centraliza estilos para que todos los campos se vean igual.
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,

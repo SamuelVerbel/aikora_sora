@@ -3,6 +3,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/routes/app_routes.dart';
 import '../services/auth_service.dart';
 
+/// Pantalla para crear una cuenta nueva. Soporta registro con email/contraseña y con Google.
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
@@ -11,28 +12,38 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
+  // Controladores para leer los campos del formulario
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _nameController = TextEditingController();
+
+  // Servicio de autenticación (Supabase)
   final _authService = AuthService();
-  bool _isLoading = false;
-  bool _obscurePassword = true;
+
+  bool _isLoading = false;       // bloquea botones mientras se registra
+  bool _obscurePassword = true; // oculta/mostrar contraseña
 
   @override
   void dispose() {
+    // Liberar controladores cuando la pantalla se destruye
     _emailController.dispose();
     _passwordController.dispose();
     _nameController.dispose();
     super.dispose();
   }
 
+  /// Registro clásico con email + password.
+  /// Valida campos, llama a Supabase y muestra mensajes de éxito/error.
   Future<void> _registerWithEmail() async {
+    // Validación básica: ningún campo vacío
     if (_emailController.text.isEmpty ||
         _passwordController.text.isEmpty ||
         _nameController.text.isEmpty) {
       _showErrorSnackBar('Completa todos los campos');
       return;
     }
+
+    // Validación de longitud mínima de contraseña
     if (_passwordController.text.length < 6) {
       _showErrorSnackBar('La contraseña debe tener al menos 6 caracteres');
       return;
@@ -44,6 +55,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         _passwordController.text.trim(),
         _nameController.text.trim(),
       );
+
+      // No navegamos aquí: AuthGate se encarga cuando el usuario confirme el correo.
       _showSuccessSnackBar('¡Cuenta creada! Revisa tu email para confirmar.');
     } catch (e) {
       _showErrorSnackBar('Error: $e');
@@ -52,6 +65,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
+  /// Registro/inicio con Google.
+  /// Internamente es lo mismo que login con Google; si no existe, Supabase crea la cuenta.
   Future<void> _registerWithGoogle() async {
     setState(() => _isLoading = true);
     try {
@@ -81,9 +96,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       backgroundColor: const Color(0xFF0B1C2D),
       body: SafeArea(
         child: SingleChildScrollView(
+          // Permite hacer scroll si el teclado tapa contenido
           child: Column(
             children: [
-              // Header
+              // ── Header degradado con logo ────────────────────────────
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 32),
@@ -96,6 +112,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 child: Column(
                   children: [
+                    // Botón volver al Welcome / Login
                     Align(
                       alignment: Alignment.centerLeft,
                       child: Padding(
@@ -107,7 +124,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                       ),
                     ),
-                    // ✅ Logo real
+                    // Logo de la app
                     Image.asset(
                       'assets/logo/app_icon.png',
                       height: 70,
@@ -131,7 +148,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
               ),
 
-              // Formulario
+              // ── Formulario blanco ─────────────────────────────────────
               Container(
                 decoration: const BoxDecoration(
                   color: Colors.white,
@@ -144,6 +161,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   children: [
                     const SizedBox(height: 8),
 
+                    // Campo nombre completo
                     _buildTextField(
                       controller: _nameController,
                       label: 'Nombre completo',
@@ -151,6 +169,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     const SizedBox(height: 16),
 
+                    // Campo email
                     _buildTextField(
                       controller: _emailController,
                       label: 'Correo electrónico',
@@ -159,6 +178,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     const SizedBox(height: 16),
 
+                    // Campo contraseña con toggle de visibilidad
                     _buildTextField(
                       controller: _passwordController,
                       label: 'Contraseña (mínimo 6 caracteres)',
@@ -177,7 +197,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     const SizedBox(height: 28),
 
-                    // Botón registrarse
+                    // Botón principal de registro
                     SizedBox(
                       height: 54,
                       child: ElevatedButton(
@@ -206,6 +226,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                     const SizedBox(height: 24),
 
+                    // Divisor con texto
                     Row(
                       children: [
                         const Expanded(child: Divider()),
@@ -221,6 +242,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                     const SizedBox(height: 24),
 
+                    // Botón Google
                     SizedBox(
                       height: 54,
                       child: OutlinedButton(
@@ -251,6 +273,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                     const SizedBox(height: 28),
 
+                    // Enlace para volver al login si ya tiene cuenta
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -282,6 +305,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
+  /// Campo de texto reutilizable con estilos del formulario de registro.
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
