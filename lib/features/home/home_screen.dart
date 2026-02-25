@@ -1,3 +1,5 @@
+// ignore_for_file: dead_null_aware_expression
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/app_colors.dart';

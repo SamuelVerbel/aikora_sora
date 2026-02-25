@@ -3,6 +3,8 @@
 /// Este archivo actúa como un "molde": toma los datos crudos que vienen de
 /// Supabase (formato JSON) y los convierte en un objeto Dart fuertemente tipado.
 
+// ignore_for_file: dangling_library_doc_comments
+
 class Destination {
   final String id;
   final String title;
