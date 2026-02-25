@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
+import 'package:geolocator/geolocator.dart'; // Para obtener la ubicación GPS
 import '../explore/models/destination_model.dart';
 import '../explore/data/destinations_repository.dart';
 import '../explore/services/location_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/routes/app_routes.dart';
 
+/// Pantalla Explorar.
+/// Muestra TODOS los destinos y permite buscar por texto,
+/// filtrar por categoría y ordenar por cercanía usando el GPS del usuario.
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
 
@@ -14,47 +17,62 @@ class ExploreScreen extends StatefulWidget {
 }
 
 class _ExploreScreenState extends State<ExploreScreen> {
+  // Conexión con Supabase para traer los datos
   final _repository = DestinationsRepository();
+  
+  // Guardamos TODOS los destinos aquí para no llamar a la BD en cada búsqueda
   List<Destination> _allDestinations = [];
+  
+  // Lista que realmente se muestra en pantalla (resultado de los filtros)
   List<Destination> _filtered = [];
-  bool _isLoading = true;
-  String _query = '';
+  
+  bool _isLoading = true; // Controla el spinner inicial
+  String _query = '';     // Texto actual de la barra de búsqueda
 
-  // Geo
-  Position? _userPosition;
-  bool _sortByDistance = false;
-  bool _loadingLocation = false;
-  String? _categoryFilter;
+  // ── Variables de Geolocalización y Filtros ───────────────────────
+  Position? _userPosition;       // Coordenadas actuales del usuario
+  bool _sortByDistance = false;  // ¿Está activo el ordenamiento por GPS?
+  bool _loadingLocation = false; // Controla el spinner del botón GPS
+  String? _categoryFilter;       // Categoría seleccionada (ej. 'playa')
 
   @override
   void initState() {
     super.initState();
-    // Recibir categoría desde Home si viene como argumento
+    // addPostFrameCallback asegura que el widget ya está construido antes de 
+    // intentar leer los argumentos de la ruta (ModalRoute).
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Leemos si el usuario viene del Home habiendo tocado una categoría
       final args = ModalRoute.of(context)?.settings.arguments;
       if (args is Map && args['category'] != null) {
         _categoryFilter = args['category'];
       }
+      
+      // Una vez capturados los filtros, cargamos los datos
       _loadDestinations();
     });
   }
 
+  /// Trae la lista completa de destinos desde Supabase 1 sola vez.
   Future<void> _loadDestinations() async {
     setState(() => _isLoading = true);
     final data = await _repository.getDestinations();
+    
     if (mounted) {
       setState(() {
         _allDestinations = data;
-        _applyFilters();
+        _applyFilters(); // Aplica filtros iniciales (si venía con categoría)
         _isLoading = false;
       });
     }
   }
 
+  /// Motor principal de filtrado y ordenamiento.
+  /// Se llama cada vez que el usuario escribe, borra, activa o desactiva un filtro.
   void _applyFilters() {
+    // 1. Empezamos con la lista completa
     List<Destination> result = List.from(_allDestinations);
 
-    // Filtro de búsqueda
+    // 2. Filtro de Búsqueda de texto (Buscador)
     if (_query.isNotEmpty) {
       result = result.where((d) =>
         d.title.toLowerCase().contains(_query.toLowerCase()) ||
@@ -63,42 +81,52 @@ class _ExploreScreenState extends State<ExploreScreen> {
       ).toList();
     }
 
-    // Filtro de categoría (desde Home)
+    // 3. Filtro de Categoría (si se tocó un botón en el Home)
     if (_categoryFilter != null && _categoryFilter!.isNotEmpty) {
       result = result.where((d) =>
         d.category.toLowerCase().contains(_categoryFilter!) ||
-        (d.tags.any((t) => t.toLowerCase().contains(_categoryFilter!)) ?? false)
+        // Verifica si la categoría está dentro del arreglo de tags
+        (d.tags.any((t) => t.toLowerCase().contains(_categoryFilter!)))
       ).toList();
     }
 
-    // Ordenar por distancia
+    // 4. Ordenamiento por Distancia (si el usuario tocó el icono de GPS)
     if (_sortByDistance && _userPosition != null) {
       result.sort((a, b) {
+        // Calcula distancia desde el usuario al destino A
         final distA = (a.longitude != null)
             ? LocationService.distanceInKm(
                 _userPosition!.latitude, _userPosition!.longitude,
                 a.latitude, a.longitude)
-            : double.infinity;
+            : double.infinity; // Si no tiene coordenadas, lo manda al final
+            
+        // Calcula distancia desde el usuario al destino B
         final distB = (b.longitude != null)
             ? LocationService.distanceInKm(
                 _userPosition!.latitude, _userPosition!.longitude,
                 b.latitude, b.longitude)
             : double.infinity;
+            
+        // Compara distancias para ordenarlas de menor a mayor
         return distA.compareTo(distB);
       });
     }
 
+    // 5. Actualizamos la lista visible
     _filtered = result;
   }
 
+  /// Se ejecuta cada vez que el usuario teclea en el buscador.
   void _onSearch(String value) {
     setState(() {
       _query = value;
-      _applyFilters();
+      _applyFilters(); // Re-calcula la lista al instante
     });
   }
 
+  /// Activa o desactiva el ordenamiento por GPS.
   Future<void> _toggleNearMe() async {
+    // Si ya estaba activo, lo desactivamos
     if (_sortByDistance) {
       setState(() {
         _sortByDistance = false;
@@ -109,8 +137,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
     setState(() => _loadingLocation = true);
 
+    // Pide permisos de GPS y obtiene la ubicación actual
     final position = await LocationService.getCurrentPosition();
 
+    // Si el usuario denegó permisos o el GPS está apagado
     if (position == null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -128,12 +158,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
       return;
     }
 
+    // Si obtuvo coordenadas con éxito
     if (mounted) {
       setState(() {
         _userPosition = position;
         _sortByDistance = true;
         _loadingLocation = false;
-        _applyFilters();
+        _applyFilters(); // Reordena la lista basándose en las nuevas coordenadas
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -154,11 +185,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // ── AppBar ────────────────────────────────────────────────────────────
       appBar: AppBar(
         title: const Text('Explorar destinos'),
         centerTitle: true,
         actions: [
-          // Botón cerca de mí
+          // Botón del GPS en la barra superior
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: _loadingLocation
@@ -174,33 +206,34 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     onPressed: _toggleNearMe,
                     icon: Icon(
                       Icons.near_me,
-                      color: _sortByDistance
-                          ? AppColors.accent
-                          : null,
+                      // Cambia de color si está activo
+                      color: _sortByDistance ? AppColors.accent : null,
                     ),
                   ),
           ),
         ],
       ),
+      
+      // ── Cuerpo Principal ──────────────────────────────────────────────────
       body: Column(
         children: [
-          // 🔍 Buscador
+          // 1. Buscador (Búsqueda de texto)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             child: TextField(
               decoration: InputDecoration(
                 hintText: 'Buscar ciudad o país',
-                prefixIcon:
-                    const Icon(Icons.search, color: AppColors.accent),
+                prefixIcon: const Icon(Icons.search, color: AppColors.accent),
                 border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14)),
+                // Muestra botón "X" solo si hay texto escrito
                 suffixIcon: _query.isNotEmpty
                     ? IconButton(
                         icon: const Icon(Icons.clear),
                         onPressed: () {
                           setState(() {
                             _query = '';
-                            _applyFilters();
+                            _applyFilters(); // Recalcula sin texto
                           });
                         },
                       )
@@ -210,7 +243,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
             ),
           ),
 
-          // Chips de estado activo
+          // 2. Chips (Pastillas) de estado activo (GPS o Categoría)
+          // Se muestran dinámicamente solo si el usuario activó algún filtro.
           if (_sortByDistance || _categoryFilter != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
@@ -236,26 +270,26 @@ class _ExploreScreenState extends State<ExploreScreen> {
               ]),
             ),
 
-          // Contador
+          // 3. Texto contador de resultados
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
             child: Row(
               children: [
                 Text(
+                  // Lógica ternaria para manejar singular/plural correctamente
                   '${_filtered.length} destino${_filtered.length != 1 ? 's' : ''} encontrado${_filtered.length != 1 ? 's' : ''}',
-                  style: TextStyle(
-                      color: Colors.grey[500], fontSize: 13),
+                  style: TextStyle(color: Colors.grey[500], fontSize: 13),
                 ),
               ],
             ),
           ),
 
-          // Lista
+          // 4. Lista de resultados (con soporte de scroll)
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _filtered.isEmpty
-                    ? _emptyState()
+                    ? _emptyState() // Pantalla vacía si la búsqueda no dio resultados
                     : RefreshIndicator(
                         onRefresh: _loadDestinations,
                         color: AppColors.accent,
@@ -264,6 +298,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
                           itemCount: _filtered.length,
                           itemBuilder: (_, i) => DestinationCard(
                             destination: _filtered[i],
+                            // Pasamos la posición del usuario a la tarjeta 
+                            // para que calcule la etiqueta de "X km de ti"
                             userPosition: _userPosition,
                           ),
                         ),
@@ -274,6 +310,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
     );
   }
 
+  // ──────────────────────────────────────────────────────────────────────────
+  // SUB-WIDGETS LOCALES
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /// Diseño que se muestra cuando la búsqueda/filtro devuelve 0 resultados.
   Widget _emptyState() {
     return Center(
       child: Column(
@@ -286,6 +327,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
           const SizedBox(height: 8),
           TextButton(
             onPressed: () {
+              // Botón de escape: borra todos los filtros de golpe
               setState(() {
                 _query = '';
                 _categoryFilter = null;
@@ -302,8 +344,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 }
 
-/* ── Filter chip ─────────────────────────────────── */
+// ────────────────────────────────────────────────────────────────────────────
+// COMPONENTES REUTILIZABLES
+// ────────────────────────────────────────────────────────────────────────────
 
+/// Pastilla (Chip) que indica qué filtro está activo. 
+/// Tiene una X para eliminarlo.
 class _FilterChip extends StatelessWidget {
   final String label;
   final VoidCallback onRemove;
@@ -334,8 +380,7 @@ class _FilterChip extends StatelessWidget {
   }
 }
 
-/* ── Destination Card ────────────────────────────── */
-
+/// Tarjeta grande de destino para la lista vertical de resultados.
 class DestinationCard extends StatelessWidget {
   final Destination destination;
   final Position? userPosition;
@@ -348,7 +393,8 @@ class DestinationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Calcular distancia si tenemos coordenadas
+    // Lógica para mostrar la etiqueta "A X km de ti".
+    // Solo se calcula si el usuario activó el GPS y tenemos sus coordenadas.
     String? distanceLabel;
     if (userPosition != null) {
       final km = LocationService.distanceInKm(
@@ -361,14 +407,16 @@ class DestinationCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 18),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      elevation: 4,
+      elevation: 4, // Sombra ligera
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Imagen
+          // ── Imagen ──────────────────────────────────────────────────────
           ClipRRect(
             borderRadius:
                 const BorderRadius.vertical(top: Radius.circular(20)),
+            // Hero animation: permite que la imagen "vuele" hacia la pantalla 
+            // de detalle cuando el usuario hace clic.
             child: Hero(
               tag: destination.id,
               child: Image.network(
@@ -385,6 +433,7 @@ class DestinationCard extends StatelessWidget {
             ),
           ),
 
+          // ── Información inferior ─────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -393,12 +442,14 @@ class DestinationCard extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
+                    // Título del destino
                     Expanded(
                       child: Text(destination.title,
                           style: const TextStyle(
                               fontSize: 20, fontWeight: FontWeight.bold)),
                     ),
-                    // Badge distancia
+                    
+                    // Badge de distancia calculada (solo visible si GPS activo)
                     if (distanceLabel != null)
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -422,6 +473,7 @@ class DestinationCard extends StatelessWidget {
                 ),
 
                 const SizedBox(height: 4),
+                // Ubicación (Ciudad, País)
                 Row(children: [
                   const Icon(Icons.location_on_outlined,
                       size: 14, color: Colors.grey),
@@ -431,10 +483,12 @@ class DestinationCard extends StatelessWidget {
                 ]),
 
                 const SizedBox(height: 8),
+                // Descripción truncada a máximo 2 líneas
                 Text(destination.description,
                     maxLines: 2, overflow: TextOverflow.ellipsis),
 
                 const SizedBox(height: 10),
+                // Estrellas y Reseñas
                 Row(children: [
                   const Icon(Icons.star, color: Colors.amber, size: 16),
                   const SizedBox(width: 4),
@@ -445,6 +499,7 @@ class DestinationCard extends StatelessWidget {
                 ]),
 
                 const SizedBox(height: 14),
+                // Botón Ver Más
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
@@ -456,7 +511,8 @@ class DestinationCard extends StatelessWidget {
                     onPressed: () => Navigator.pushNamed(
                       context,
                       AppRoutes.destinationDetail,
-                      arguments: destination,
+                      // Pasamos el objeto destino completo a la siguiente pantalla
+                      arguments: destination, 
                     ),
                     child: const Text('Ver más'),
                   ),

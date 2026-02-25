@@ -5,6 +5,9 @@ import '../../core/routes/app_routes.dart';
 import '../auth/services/profile_service.dart';
 import '../explore/models/destination_model.dart';
 
+/// Pantalla principal (Home) de la app.
+/// Muestra un saludo personalizado, destinos destacados (mejor rating),
+/// categorías rápidas y accesos directos al planificador.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -15,13 +18,16 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final _supabase = Supabase.instance.client;
 
+  // Estado del usuario
   String userName = 'Viajero';
   String? userAvatar;
-  bool isLoading = true;
+  bool isLoading = true; // Controla la carga general inicial
 
+  // Estado de destinos destacados
   List<Destination> _featured = [];
   bool _loadingDestinations = true;
 
+  // Categorias fijas. Cada una tiene una 'tag' que se manda al ExploreScreen
   final List<Map<String, dynamic>> _categories = [
     {'label': 'Playa',       'icon': Icons.beach_access_outlined,  'tag': 'playa'},
     {'label': 'Cultura',     'icon': Icons.museum_outlined,         'tag': 'cultura'},
@@ -37,15 +43,18 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadAll();
   }
 
+  /// Carga simultáneamente el perfil del usuario y los destinos destacados.
   Future<void> _loadAll() async {
     final user = _supabase.auth.currentUser;
 
+    // Future.wait permite ejecutar ambas promesas a la vez, ahorrando tiempo.
     await Future.wait([
       _loadProfile(user),
       _loadFeatured(),
     ]);
   }
 
+  /// Obtiene los datos del perfil desde la BD.
   Future<void> _loadProfile(User? user) async {
     if (user == null) {
       if (mounted) setState(() => isLoading = false);
@@ -61,13 +70,15 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  /// Obtiene el "Top 6" de destinos con mayor calificación (rating).
   Future<void> _loadFeatured() async {
     try {
+      // Hacemos la query directa aquí porque es muy específica del Home
       final response = await _supabase
           .from('destinations')
           .select()
-          .order('rating', ascending: false)
-          .limit(6);
+          .order('rating', ascending: false) // Mayor a menor
+          .limit(6);                         // Solo traemos 6 destinos
 
       final list = (response as List)
           .map((e) => Destination.fromJson(e))
@@ -89,12 +100,15 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
+          // RefreshIndicator permite deslizar hacia abajo para recargar
           : RefreshIndicator(
               onRefresh: _loadAll,
               color: AppColors.accent,
+              // CustomScrollView con Slivers permite scrollear listas 
+              // horizontales y grids complejas de forma muy fluida.
               child: CustomScrollView(
                 slivers: [
-                  // ── AppBar con saludo ───────────────────────
+                  // ── Header con Saludo y Buscador ──────────────────────
                   SliverToBoxAdapter(
                     child: SafeArea(
                       child: Padding(
@@ -112,7 +126,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
 
-                  // ── Destinos recomendados ───────────────────
+                  // ── Sección Destinos Recomendados ────────────────────
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.only(left: 24, bottom: 16),
@@ -133,6 +147,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
 
+                  // Lista horizontal de Destinos Destacados
                   SliverToBoxAdapter(
                     child: SizedBox(
                       height: 220,
@@ -148,6 +163,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   itemBuilder: (_, i) =>
                                       _DestinationCard(
                                         destination: _featured[i],
+                                        // Al tocar, navegamos al Detalle pasando el objeto entero
                                         onTap: () => Navigator.pushNamed(
                                           context,
                                           AppRoutes.destinationDetail,
@@ -158,7 +174,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
 
-                  // ── Categorías ──────────────────────────────
+                  // ── Sección Categorías ───────────────────────────────
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(24, 36, 24, 16),
@@ -168,12 +184,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
 
+                  // Grid de categorías
                   SliverPadding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     sliver: SliverGrid(
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 3,
+                        crossAxisCount: 3, // 3 columnas
                         mainAxisSpacing: 12,
                         crossAxisSpacing: 12,
                         childAspectRatio: 1.15,
@@ -182,6 +199,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         (_, i) => _CategoryCard(
                           label: _categories[i]['label'],
                           icon:  _categories[i]['icon'],
+                          // Al tocar, vamos a Explore pasándole la 'tag' como filtro
                           onTap: () => Navigator.pushNamed(
                             context,
                             AppRoutes.explore,
@@ -193,7 +211,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
 
-                  // ── Acceso rápido ───────────────────────────
+                  // ── Accesos Rápidos (Planear / Reservas) ─────────────
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(24, 36, 24, 16),
@@ -237,7 +255,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ── Sección de bienvenida ─────────────────────────────────────────────────
+  // ──────────────────────────────────────────────────────────────────────────
+  // SUB-WIDGETS LOCALES (Extraídos para mantener el método build más limpio)
+  // ──────────────────────────────────────────────────────────────────────────
 
   Widget _welcomeSection() {
     final firstName = userName.split(' ').first;
@@ -286,6 +306,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _searchBar() {
     return GestureDetector(
+      // Finge ser un buscador, pero al tocar te lleva a la pantalla Explore
       onTap: () => Navigator.pushNamed(context, AppRoutes.explore),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
@@ -320,7 +341,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// ── Widgets auxiliares ────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
+// COMPONENTES REUTILIZABLES DE UI
+// ────────────────────────────────────────────────────────────────────────────
+
+/// Tarjeta de destino para la lista horizontal.
 
 class _DestinationCard extends StatelessWidget {
   final Destination destination;
@@ -362,7 +387,8 @@ class _DestinationCard extends StatelessWidget {
                       color: Colors.grey),
                 ),
               ),
-              // Gradiente
+              
+              // 2. Sombra degradada inferior (para que se lea bien el texto)
               Container(
                 height: 220,
                 decoration: BoxDecoration(
@@ -376,7 +402,8 @@ class _DestinationCard extends StatelessWidget {
                   ),
                 ),
               ),
-              // Rating badge
+              
+              // 3. Etiqueta de calificación (Rating) arriba a la derecha
               Positioned(
                 top: 10,
                 right: 10,
@@ -403,7 +430,8 @@ class _DestinationCard extends StatelessWidget {
                   ),
                 ),
               ),
-              // Texto
+              
+              // 4. Textos de Título y País abajo a la izquierda
               Positioned(
                 bottom: 14,
                 left: 14,
@@ -436,6 +464,7 @@ class _DestinationCard extends StatelessWidget {
   }
 }
 
+/// Botón pequeño del grid de categorías.
 class _CategoryCard extends StatelessWidget {
   final String label;
   final IconData icon;
@@ -483,6 +512,7 @@ class _CategoryCard extends StatelessWidget {
   }
 }
 
+/// Botón grande para los accesos rápidos (Planear / Reservas).
 class _QuickAction extends StatelessWidget {
   final IconData icon;
   final String label;
