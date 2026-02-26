@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/routes/app_routes.dart';
+import '../../../core/theme/app_colors.dart';
 import '../services/auth_service.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -11,11 +11,12 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final _emailController = TextEditingController();
+  final _emailController    = TextEditingController();
   final _passwordController = TextEditingController();
-  final _nameController = TextEditingController();
-  final _authService = AuthService();
-  bool _isLoading = false;
+  final _nameController     = TextEditingController();
+  final _authService        = AuthService();
+
+  bool _isLoading       = false;
   bool _obscurePassword = true;
 
   @override
@@ -26,6 +27,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
+  // ── Registro con email ──────────────────────────────────────────────────────
   Future<void> _registerWithEmail() async {
     if (_emailController.text.isEmpty ||
         _passwordController.text.isEmpty ||
@@ -37,6 +39,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _showErrorSnackBar('La contraseña debe tener al menos 6 caracteres');
       return;
     }
+
     setState(() => _isLoading = true);
     try {
       await _authService.signUpWithEmail(
@@ -52,6 +55,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
+  // ── Registro con Google ─────────────────────────────────────────────────────
   Future<void> _registerWithGoogle() async {
     setState(() => _isLoading = true);
     try {
@@ -75,23 +79,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
+  // ── UI ──────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    // 🔑 CLAVE: leemos el tema actual en cada rebuild
+    final theme      = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark     = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0B1C2D),
+      // El Scaffold ya hereda el color de fondo del tema (claro u oscuro)
       body: SafeArea(
         child: SingleChildScrollView(
           child: Column(
             children: [
-              // Header
+              // ── Header ────────────────────────────────────────────────────
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 32),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [Color(0xFF0B1C2D), Color(0xFF0F2744)],
+                    // En dark mode fondo muy oscuro; en light el azul original
+                    colors: isDark
+                        ? [const Color(0xFF0F172A), const Color(0xFF1E293B)]
+                        : [const Color(0xFF0B1C2D), const Color(0xFF0F2744)],
                   ),
                 ),
                 child: Column(
@@ -107,20 +120,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                       ),
                     ),
-                    // ✅ Logo real
-                    Image.asset(
-                      'assets/logo/app_icon.png',
-                      height: 70,
-                      width: 70,
-                    ),
+                    Image.asset('assets/logo/app_icon.png',
+                        height: 70, width: 70),
                     const SizedBox(height: 16),
                     const Text(
                       'Crea tu cuenta',
                       style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                      ),
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 6),
                     const Text(
@@ -131,35 +139,36 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
               ),
 
-              // Formulario
+              // ── Formulario ────────────────────────────────────────────────
               Container(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
+                // 🔑 ANTES era Colors.white fijo → ahora usa el color del tema
+                decoration: BoxDecoration(
+                  color: theme.scaffoldBackgroundColor,
                   borderRadius:
-                      BorderRadius.vertical(top: Radius.circular(30)),
+                      const BorderRadius.vertical(top: Radius.circular(30)),
                 ),
                 padding: const EdgeInsets.all(28),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const SizedBox(height: 8),
-
                     _buildTextField(
+                      context: context,
                       controller: _nameController,
                       label: 'Nombre completo',
                       icon: Icons.person_outline,
                     ),
                     const SizedBox(height: 16),
-
                     _buildTextField(
+                      context: context,
                       controller: _emailController,
                       label: 'Correo electrónico',
                       icon: Icons.email_outlined,
                       keyboardType: TextInputType.emailAddress,
                     ),
                     const SizedBox(height: 16),
-
                     _buildTextField(
+                      context: context,
                       controller: _passwordController,
                       label: 'Contraseña (mínimo 6 caracteres)',
                       icon: Icons.lock_outline,
@@ -169,7 +178,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           _obscurePassword
                               ? Icons.visibility_off_outlined
                               : Icons.visibility_outlined,
-                          color: Colors.grey,
+                          // 🔑 color adaptable al tema
+                          color: colorScheme.onSurface.withOpacity(0.5),
                         ),
                         onPressed: () => setState(
                             () => _obscurePassword = !_obscurePassword),
@@ -187,8 +197,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           foregroundColor: Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
+                              borderRadius: BorderRadius.circular(16)),
                         ),
                         child: _isLoading
                             ? const SizedBox(
@@ -203,33 +212,36 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     fontWeight: FontWeight.w600)),
                       ),
                     ),
-
                     const SizedBox(height: 24),
 
+                    // Separador
                     Row(
                       children: [
                         const Expanded(child: Divider()),
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          padding:
+                              const EdgeInsets.symmetric(horizontal: 12),
                           child: Text('o continúa con',
+                              // 🔑 color adaptable
                               style: TextStyle(
-                                  color: Colors.grey[500], fontSize: 13)),
+                                  color: colorScheme.onSurface.withOpacity(0.5),
+                                  fontSize: 13)),
                         ),
                         const Expanded(child: Divider()),
                       ],
                     ),
-
                     const SizedBox(height: 24),
 
+                    // Botón Google
                     SizedBox(
                       height: 54,
                       child: OutlinedButton(
                         onPressed: _isLoading ? null : _registerWithGoogle,
                         style: OutlinedButton.styleFrom(
-                          side: BorderSide(color: Colors.grey.shade300),
+                          // 🔑 borde adaptable al tema
+                          side: BorderSide(color: colorScheme.outline),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
+                              borderRadius: BorderRadius.circular(16)),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -237,25 +249,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             Image.asset('assets/google.png',
                                 height: 22, width: 22),
                             const SizedBox(width: 12),
-                            const Text(
+                            Text(
                               'Continuar con Google',
+                              // 🔑 texto adaptable al tema
                               style: TextStyle(
                                   fontSize: 15,
-                                  color: Colors.black87,
+                                  color: colorScheme.onSurface,
                                   fontWeight: FontWeight.w500),
                             ),
                           ],
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 28),
 
+                    // Link a login
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text('¿Ya tienes cuenta? ',
-                            style: TextStyle(color: Colors.grey[600])),
+                            // 🔑 adaptable
+                            style: TextStyle(
+                                color: colorScheme.onSurface.withOpacity(0.6))),
                         GestureDetector(
                           onTap: _isLoading
                               ? null
@@ -264,9 +279,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           child: const Text(
                             'Iniciar sesión',
                             style: TextStyle(
-                              color: AppColors.accent,
-                              fontWeight: FontWeight.w600,
-                            ),
+                                color: AppColors.accent,
+                                fontWeight: FontWeight.w600),
                           ),
                         ),
                       ],
@@ -282,7 +296,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
+  // ── Widget helper ────────────────────────────────────────────────────────────
   Widget _buildTextField({
+    required BuildContext context,       // 🔑 nuevo parámetro
     required TextEditingController controller,
     required String label,
     required IconData icon,
@@ -290,25 +306,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
     TextInputType? keyboardType,
     Widget? suffixIcon,
   }) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return TextField(
       controller: controller,
       obscureText: obscureText,
       keyboardType: keyboardType,
+      // 🔑 ESTO es lo que faltaba: el color del texto sigue al tema
+      style: TextStyle(color: colorScheme.onSurface),
+      cursorColor: AppColors.accent,
       decoration: InputDecoration(
         labelText: label,
+        // 🔑 label visible en ambos modos
+        labelStyle: TextStyle(color: colorScheme.onSurface.withOpacity(0.7)),
         prefixIcon: Icon(icon, color: AppColors.accent, size: 20),
         suffixIcon: suffixIcon,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+        border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14)),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: Colors.grey.shade300),
+          // 🔑 borde usa el color del tema
+          borderSide: BorderSide(color: colorScheme.outline),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: AppColors.accent, width: 2),
         ),
         filled: true,
-        fillColor: Colors.grey[50],
+        // 🔑 fondo del field usa la superficie del tema
+        fillColor: colorScheme.surface,
       ),
     );
   }

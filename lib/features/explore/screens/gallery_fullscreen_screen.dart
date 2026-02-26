@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 
+/// Visor de imágenes a pantalla completa.
+/// Permite al usuario hacer zoom (InteractiveViewer) y deslizar entre las
+/// diferentes fotos del destino (PageView).
 class GalleryFullscreenScreen extends StatefulWidget {
-  final List<String> images;
-  final int initialIndex;
+  final List<String> images;   // Lista de URLs de las imágenes
+  final int initialIndex;      // Foto que el usuario tocó (para abrir directamente ahí)
 
   const GalleryFullscreenScreen({
     super.key,
@@ -24,34 +27,38 @@ class _GalleryFullscreenScreenState
   void initState() {
     super.initState();
     currentIndex = widget.initialIndex;
+    // El PageController arranca en el índice exacto de la foto seleccionada
     _controller = PageController(initialPage: currentIndex);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Colors.black, // Fondo negro para resaltar las fotos
       body: Stack(
         children: [
+          // ── Carrusel de Imágenes ───────────────────────────────────────
           PageView.builder(
             controller: _controller,
             itemCount: widget.images.length,
             onPageChanged: (index) {
+              // Actualiza el contador de abajo cuando deslizamos
               setState(() => currentIndex = index);
             },
             itemBuilder: (context, index) {
+              // InteractiveViewer es la magia que permite hacer zoom con los dedos (Pinch-to-zoom)
               return InteractiveViewer(
                 child: Center(
                   child: Image.network(
                     widget.images[index],
-                    fit: BoxFit.contain,
+                    fit: BoxFit.contain, // Mantiene la proporción de la foto
                   ),
                 ),
               );
             },
           ),
 
-          // 🔙 Botón cerrar
+          // ── 🔙 Botón cerrar (Esquina superior izquierda) ───────────────
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -65,7 +72,7 @@ class _GalleryFullscreenScreenState
             ),
           ),
 
-          // 🔢 Indicador inferior
+          // ── 🔢 Indicador inferior (Ej: 2 / 5) ──────────────────────────
           Positioned(
             bottom: 30,
             left: 0,

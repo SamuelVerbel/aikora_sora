@@ -4,8 +4,9 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../models/destination_model.dart';
 import 'gallery_fullscreen_screen.dart';
+import '../../reservations/create_reservation_screen.dart';
 
-class DestinationDetailScreen extends StatelessWidget {
+class DestinationDetailScreen extends StatefulWidget {
   final Destination destination;
 
   const DestinationDetailScreen({
@@ -14,94 +15,222 @@ class DestinationDetailScreen extends StatelessWidget {
   });
 
   @override
+  State<DestinationDetailScreen> createState() =>
+      _DestinationDetailScreenState();
+}
+
+class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
+  late final PageController _pageController;
+  int _currentSlide = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  /// Combina mainImage + gallery sin duplicados, máximo 6 imágenes
+  List<String> get _allImages {
+    final images = <String>[];
+    if (widget.destination.mainImage.isNotEmpty) {
+      images.add(widget.destination.mainImage);
+    }
+    for (final img in widget.destination.gallery) {
+      if (img.isNotEmpty && !images.contains(img)) {
+        images.add(img);
+      }
+    }
+    return images.take(6).toList();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final images = _allImages;
+    final dest = widget.destination;
+
     return Scaffold(
       body: Stack(
         children: [
-          // 📸 Imagen principal con Hero
-          Hero(
-            tag: destination.id,
-            child: SizedBox(
-              height: 350,
-              width: double.infinity,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Image.network(
-                    destination.mainImage,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      color: Colors.grey[300],
-                      child: const Icon(Icons.image_not_supported, size: 60),
-                    ),
-                  ),
-                  Container(
+
+          // ── 📸 SLIDER DE IMÁGENES ────────────────────────────────────────
+          SizedBox(
+            height: 360,
+            width: double.infinity,
+            child: Stack(
+              children: [
+
+                // PageView principal
+                PageView.builder(
+                  controller: _pageController,
+                  itemCount: images.isEmpty ? 1 : images.length,
+                  onPageChanged: (index) =>
+                      setState(() => _currentSlide = index),
+                  itemBuilder: (context, index) {
+                    final imageUrl = images.isEmpty ? '' : images[index];
+                    return GestureDetector(
+                      onTap: () {
+                        if (images.isNotEmpty) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => GalleryFullscreenScreen(
+                                images: images,
+                                initialIndex: index,
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                      child: imageUrl.isNotEmpty
+                          ? Image.network(
+                              imageUrl,
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              errorBuilder: (_, __, ___) => Container(
+                                color: Colors.grey[300],
+                                child: const Icon(
+                                    Icons.image_not_supported, size: 60),
+                              ),
+                            )
+                          : Container(
+                              color: Colors.grey[300],
+                              child: const Icon(
+                                  Icons.image_not_supported, size: 60),
+                            ),
+                    );
+                  },
+                ),
+
+                // Degradado inferior sobre el slider
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  height: 180,
+                  child: Container(
                     decoration: const BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: [Colors.transparent, Colors.black54],
+                        colors: [Colors.transparent, Colors.black],
                       ),
                     ),
                   ),
-                  Positioned(
-                    bottom: 30,
-                    left: 24,
-                    right: 24,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          destination.title,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 26,
-                            fontWeight: FontWeight.bold,
+                ),
+
+                // Título y ubicación sobre el degradado
+                Positioned(
+                  bottom: 44,
+                  left: 24,
+                  right: 24,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        dest.title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                          shadows: [Shadow(blurRadius: 4, color: Colors.black45)],
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          const Icon(Icons.location_on,
+                              color: Colors.white70, size: 16),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${dest.city}, ${dest.country}',
+                            style: const TextStyle(
+                                color: Colors.white70, fontSize: 16),
                           ),
-                        ),
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            const Icon(Icons.location_on,
-                                color: Colors.white70, size: 16),
-                            const SizedBox(width: 4),
-                            Text(
-                              '${destination.city}, ${destination.country}',
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Indicadores de puntos (dots)
+                if (images.length > 1)
+                  Positioned(
+                    bottom: 18,
+                    left: 0,
+                    right: 0,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(images.length, (i) {
+                        final isActive = i == _currentSlide;
+                        return AnimatedContainer(
+                          duration: const Duration(milliseconds: 250),
+                          margin: const EdgeInsets.symmetric(horizontal: 3),
+                          width: isActive ? 20 : 7,
+                          height: 7,
+                          decoration: BoxDecoration(
+                            color:
+                                isActive ? Colors.white : Colors.white54,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        );
+                      }),
                     ),
                   ),
-                ],
-              ),
+
+                // Contador "1 / N"
+                if (images.length > 1)
+                  Positioned(
+                    top: 56,
+                    right: 16,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.black45,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        '${_currentSlide + 1} / ${images.length}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
 
-          // 🔙 Botón volver
+          // ── 🔙 Botón Volver Flotante ─────────────────────────────────────
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: CircleAvatar(
                 backgroundColor: Colors.black.withOpacity(0.5),
                 child: IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  icon:
+                      const Icon(Icons.arrow_back, color: Colors.white),
                   onPressed: () => Navigator.pop(context),
                 ),
               ),
             ),
           ),
 
-          // 📄 Contenido principal
+          // ── 📄 Contenido Blanco Deslizable ───────────────────────────────
           Container(
-            margin: const EdgeInsets.only(top: 300),
+            margin: const EdgeInsets.only(top: 310),
             decoration: const BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+              borderRadius:
+                  BorderRadius.vertical(top: Radius.circular(30)),
             ),
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
@@ -109,23 +238,22 @@ class DestinationDetailScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
 
-                  // ⭐ Rating + precio + duración
+                  // ⭐ Rating + precio
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Rating
                       Row(
                         children: [
-                          const Icon(Icons.star, color: Colors.amber, size: 20),
+                          const Icon(Icons.star,
+                              color: Colors.amber, size: 20),
                           const SizedBox(width: 6),
                           Text(
-                            '${destination.rating} (${destination.reviews} reseñas)',
+                            '${dest.rating} (${dest.reviews} reseñas)',
                             style: const TextStyle(fontSize: 14),
                           ),
                         ],
                       ),
-                      // Precio estimado
-                      if (destination.priceMin > 0)
+                      if (dest.priceMin > 0)
                         Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 12, vertical: 6),
@@ -134,7 +262,7 @@ class DestinationDetailScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
-                            '${destination.currency} ${destination.priceMin.toInt()} - ${destination.priceMax.toInt()}/noche',
+                            '${dest.currency} ${dest.priceMin.toInt()} - ${dest.priceMax.toInt()}/noche',
                             style: const TextStyle(
                               color: AppColors.accent,
                               fontWeight: FontWeight.w600,
@@ -148,36 +276,38 @@ class DestinationDetailScreen extends StatelessWidget {
                   const SizedBox(height: 20),
 
                   // 🌤 Info rápida (clima, temporada, duración)
-                  if (destination.climate.isNotEmpty ||
-                      destination.bestSeason.isNotEmpty)
+                  if (dest.climate.isNotEmpty ||
+                      dest.bestSeason.isNotEmpty)
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: Colors.grey[50],
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.grey.shade200),
+                        border:
+                            Border.all(color: Colors.grey.shade200),
                       ),
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        mainAxisAlignment:
+                            MainAxisAlignment.spaceAround,
                         children: [
-                          if (destination.climate.isNotEmpty)
+                          if (dest.climate.isNotEmpty)
                             _InfoChip(
                               icon: Icons.wb_sunny_outlined,
                               label: 'Clima',
-                              value: destination.climate,
+                              value: dest.climate,
                             ),
-                          if (destination.bestSeason.isNotEmpty)
+                          if (dest.bestSeason.isNotEmpty)
                             _InfoChip(
                               icon: Icons.calendar_month_outlined,
                               label: 'Mejor época',
-                              value: destination.bestSeason,
+                              value: dest.bestSeason,
                             ),
-                          if (destination.durationMin > 0)
+                          if (dest.durationMin > 0)
                             _InfoChip(
                               icon: Icons.schedule_outlined,
                               label: 'Duración',
                               value:
-                                  '${destination.durationMin}-${destination.durationMax} días',
+                                  '${dest.durationMin}-${dest.durationMax} días',
                             ),
                         ],
                       ),
@@ -188,19 +318,20 @@ class DestinationDetailScreen extends StatelessWidget {
                   // 📝 Descripción
                   const Text(
                     'Descripción',
-                    style:
-                        TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    destination.description,
-                    style: const TextStyle(fontSize: 16, height: 1.6),
+                    dest.description,
+                    style:
+                        const TextStyle(fontSize: 16, height: 1.6),
                   ),
 
                   const SizedBox(height: 24),
 
                   // 🏷 Tags
-                  if (destination.tags.isNotEmpty) ...[
+                  if (dest.tags.isNotEmpty) ...[
                     const Text(
                       'Tipo de destino',
                       style: TextStyle(
@@ -210,13 +341,14 @@ class DestinationDetailScreen extends StatelessWidget {
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
-                      children: destination.tags
+                      children: dest.tags
                           .map((tag) => Chip(
                                 label: Text(tag),
                                 backgroundColor:
                                     AppColors.primary.withOpacity(0.08),
                                 labelStyle: const TextStyle(
-                                    color: AppColors.primary, fontSize: 13),
+                                    color: AppColors.primary,
+                                    fontSize: 13),
                                 side: BorderSide.none,
                               ))
                           .toList(),
@@ -224,64 +356,21 @@ class DestinationDetailScreen extends StatelessWidget {
                     const SizedBox(height: 24),
                   ],
 
-                  // 🎯 Actividades reales (antes eran hardcodeadas)
-                  if (destination.activities.isNotEmpty) ...[
+                  // 🎯 Actividades
+                  if (dest.activities.isNotEmpty) ...[
                     const Text(
                       'Actividades disponibles',
                       style: TextStyle(
                           fontSize: 18, fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 12),
-                    ...destination.activities
+                    ...dest.activities
                         .map((activity) => BulletPoint(text: activity))
                         .toList(),
                     const SizedBox(height: 24),
                   ],
 
-                  // 🖼 Galería
-                  if (destination.gallery.isNotEmpty) ...[
-                    const Text(
-                      'Galería',
-                      style: TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 14),
-                    SizedBox(
-                      height: 110,
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: destination.gallery.length,
-                        itemBuilder: (context, index) {
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 12),
-                            child: GestureDetector(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => GalleryFullscreenScreen(
-                                      images: destination.gallery,
-                                      initialIndex: index,
-                                    ),
-                                  ),
-                                );
-                              },
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(16),
-                                child: Image.network(
-                                  destination.gallery[index], // ✅ fix aquí
-                                  width: 140,
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-
-                  const SizedBox(height: 100),
+                  const SizedBox(height: 80),
                 ],
               ),
             ),
@@ -289,37 +378,66 @@ class DestinationDetailScreen extends StatelessWidget {
         ],
       ),
 
-      // 🔥 Botón inferior con datos del destino
+      // 🔥 Botón inferior
       bottomNavigationBar: Padding(
-        padding: const EdgeInsets.all(20),
-        child: ElevatedButton.icon(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.accent,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(18),
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        child: Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  side: const BorderSide(color: AppColors.accent),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18)),
+                ),
+                icon: const Icon(Icons.auto_awesome, color: AppColors.accent),
+                label: const Text(
+                  'Planear con IA',
+                  style: TextStyle(color: AppColors.accent, fontSize: 15),
+                ),
+                onPressed: () {
+                  Navigator.pushNamed(context, '/plan', arguments: dest);
+                },
+              ),
             ),
-          ),
-          icon: const Icon(Icons.auto_awesome, color: Colors.white),
-          label: const Text(
-            'Planear viaje con IA',
-            style: TextStyle(fontSize: 16, color: Colors.white),
-          ),
-          onPressed: () {
-            // ✅ Pasa el destino al planificador
-            Navigator.pushNamed(
-              context,
-              '/plan',
-              arguments: destination,
-            );
-          },
+            const SizedBox(width: 12),
+            // Botón Reservar
+            Expanded(
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.accent,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18)),
+                ),
+                icon: const Icon(Icons.bookmark_add_outlined,
+                    color: Colors.white),
+                label: const Text(
+                  'Reservar',
+                  style: TextStyle(fontSize: 15, color: Colors.white),
+                ),
+                onPressed: () {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (_) =>
+                        CreateReservationScreen(destination: dest),
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-/* ========================= */
+/* =========================================================================
+   SUB-WIDGETS LOCALES
+   ========================================================================= */
 
 class _InfoChip extends StatelessWidget {
   final IconData icon;
@@ -360,9 +478,12 @@ class BulletPoint extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 10),
       child: Row(
         children: [
-          const Icon(Icons.check_circle, color: AppColors.accent, size: 18),
+          const Icon(Icons.check_circle,
+              color: AppColors.accent, size: 18),
           const SizedBox(width: 8),
-          Expanded(child: Text(text, style: const TextStyle(fontSize: 15))),
+          Expanded(
+              child: Text(text,
+                  style: const TextStyle(fontSize: 15))),
         ],
       ),
     );

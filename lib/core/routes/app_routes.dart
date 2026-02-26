@@ -11,6 +11,7 @@ import '../../features/auth/auth_gate.dart';
 import '../../features/navigation/main_navigation_screen.dart';
 import '../../features/reservations/reservations_screen.dart';
 import '../../features/notifications/notifications_screen.dart';
+import '../../features/restaurants/restaurants_screen.dart';
 
 // ── HOME & PROFILE ──────────────────────────────────────────────────────────
 import '../../features/home/home_screen.dart';
@@ -45,6 +46,7 @@ class AppRoutes {
   static const String planResult = '/plan-result';
   static const String reservations = '/reservations';
   static const String notifications = '/notifications';
+  static const String restaurants = '/restaurants';
 
   /// Genera la ruta según settings.name.
   /// Ventaja: puedes interceptar argumentos, validar tipos y evitar crashes.
@@ -137,6 +139,11 @@ class AppRoutes {
         return MaterialPageRoute(
           builder: (_) => const NotificationsScreen(),
         );
+
+      // ── RESTAURANTS ──
+      case restaurants:
+        return MaterialPageRoute(
+            builder: (_) => const RestaurantsScreen());
 
       // ── DEFAULT ──
       default:
