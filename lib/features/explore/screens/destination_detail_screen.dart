@@ -5,6 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../models/destination_model.dart';
 import 'gallery_fullscreen_screen.dart';
 import '../../reservations/create_reservation_screen.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class DestinationDetailScreen extends StatefulWidget {
   final Destination destination;
@@ -88,21 +89,26 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
                         }
                       },
                       child: imageUrl.isNotEmpty
-                          ? Image.network(
-                              imageUrl,
-                              fit: BoxFit.cover,
-                              width: double.infinity,
-                              errorBuilder: (_, __, ___) => Container(
-                                color: Colors.grey[300],
-                                child: const Icon(
-                                    Icons.image_not_supported, size: 60),
-                              ),
-                            )
-                          : Container(
-                              color: Colors.grey[300],
-                              child: const Icon(
-                                  Icons.image_not_supported, size: 60),
-                            ),
+    ? CachedNetworkImage(
+        imageUrl: imageUrl,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        placeholder: (context, url) => Container(
+          color: Colors.grey[200],
+          child: const Center(
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+        errorWidget: (context, url, error) => Container(
+          color: Colors.grey[300],
+          child: const Icon(Icons.image_not_supported, size: 60),
+        ),
+      )
+    : Container(
+        color: Colors.grey[300],
+        child: const Icon(Icons.image_not_supported, size: 60),
+      ),
+
                     );
                   },
                 ),
@@ -381,52 +387,90 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
       // 🔥 Botón inferior
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Expanded(
+            // Fila superior: Restaurantes (ancho completo)
+            SizedBox(
+              width: double.infinity,
               child: OutlinedButton.icon(
                 style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
                   side: const BorderSide(color: AppColors.accent),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(18)),
                 ),
-                icon: const Icon(Icons.auto_awesome, color: AppColors.accent),
+                icon: const Icon(Icons.restaurant_menu,
+                    color: AppColors.accent),
                 label: const Text(
-                  'Planear con IA',
+                  'Ver Restaurantes',
                   style: TextStyle(color: AppColors.accent, fontSize: 15),
                 ),
                 onPressed: () {
-                  Navigator.pushNamed(context, '/plan', arguments: dest);
-                },
-              ),
-            ),
-            const SizedBox(width: 12),
-            // Botón Reservar
-            Expanded(
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.accent,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18)),
-                ),
-                icon: const Icon(Icons.bookmark_add_outlined,
-                    color: Colors.white),
-                label: const Text(
-                  'Reservar',
-                  style: TextStyle(fontSize: 15, color: Colors.white),
-                ),
-                onPressed: () {
-                  showModalBottomSheet(
-                    context: context,
-                    isScrollControlled: true,
-                    backgroundColor: Colors.transparent,
-                    builder: (_) =>
-                        CreateReservationScreen(destination: dest),
+                  Navigator.pushNamed(
+                    context,
+                    '/restaurants',
+                    arguments: {
+                      'destinationId': dest.id,
+                      'destinationName': dest.title,
+                    },
                   );
                 },
               ),
+            ),
+            const SizedBox(height: 10),
+            // Fila inferior: Planear con IA + Reservar
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      side: const BorderSide(color: AppColors.accent),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18)),
+                    ),
+                    icon: const Icon(Icons.auto_awesome,
+                        color: AppColors.accent),
+                    label: const Text(
+                      'Planear con IA',
+                      style: TextStyle(
+                          color: AppColors.accent, fontSize: 15),
+                    ),
+                    onPressed: () {
+                      Navigator.pushNamed(context, '/plan',
+                          arguments: dest);
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.accent,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18)),
+                    ),
+                    icon: const Icon(Icons.bookmark_add_outlined,
+                        color: Colors.white),
+                    label: const Text(
+                      'Reservar',
+                      style:
+                          TextStyle(fontSize: 15, color: Colors.white),
+                    ),
+                    onPressed: () {
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (_) =>
+                            CreateReservationScreen(destination: dest),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
           ],
         ),

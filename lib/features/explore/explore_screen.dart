@@ -7,6 +7,7 @@ import '../explore/data/destinations_repository.dart';
 import '../explore/services/location_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/routes/app_routes.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 /// Pantalla Explorar.
 /// Muestra TODOS los destinos y permite buscar por texto,
@@ -417,16 +418,21 @@ class DestinationCard extends StatelessWidget {
           ClipRRect(
             borderRadius:
                 const BorderRadius.vertical(top: Radius.circular(20)),
-            // Hero animation: permite que la imagen "vuele" hacia la pantalla 
-            // de detalle cuando el usuario hace clic.
             child: Hero(
               tag: destination.id,
-              child: Image.network(
-                destination.mainImage,
+              child: CachedNetworkImage(
+                imageUrl: destination.mainImage,
                 height: 200,
                 width: double.infinity,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
+                placeholder: (context, url) => Container(
+                  height: 200,
+                  color: Colors.grey[200],
+                  child: const Center(
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+                errorWidget: (context, url, error) => Container(
                   height: 200,
                   color: Colors.grey[300],
                   child: const Icon(Icons.image_not_supported, size: 40),
@@ -434,7 +440,6 @@ class DestinationCard extends StatelessWidget {
               ),
             ),
           ),
-
           // ── Información inferior ─────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.all(16),

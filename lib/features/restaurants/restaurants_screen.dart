@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import 'restaurant_model.dart';
 import 'restaurants_service.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 /// Pantalla de restaurantes.
 /// Tiene dos modos:
@@ -287,16 +288,24 @@ class _RestaurantCard extends StatelessWidget {
             borderRadius: const BorderRadius.horizontal(
                 left: Radius.circular(16)),
             child: restaurant.imageUrl.isNotEmpty
-                ? Image.network(
-                    restaurant.imageUrl,
+                ? CachedNetworkImage(
+                    imageUrl: restaurant.imageUrl,
                     width: 110,
                     height: 110,
                     fit: BoxFit.cover,
-                    // Placeholder si la imagen falla
-                    errorBuilder: (_, __, ___) => _placeholder(),
+                    placeholder: (context, url) => Container(
+                      width: 110,
+                      height: 110,
+                      color: Colors.grey[200],
+                      child: const Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => _placeholder(),
                   )
                 : _placeholder(),
           ),
+
 
           // ── Información del restaurante ───────────────────────────
           Expanded(
