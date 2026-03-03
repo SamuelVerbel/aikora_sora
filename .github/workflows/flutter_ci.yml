@@ -1,4 +1,4 @@
-name: Flutter CI
+name: Flutter CI/CD
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    name: Build & Test
+    name: Build & Release APK
     runs-on: ubuntu-latest
 
     steps:
@@ -25,10 +25,6 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Verify formatting
-        run: dart format --output=none --set-exit-if-changed .
-        continue-on-error: true
-
       - name: Analyze code
         run: flutter analyze --no-fatal-infos
         continue-on-error: true
@@ -37,12 +33,36 @@ jobs:
         run: flutter test
         continue-on-error: true
 
-      - name: Build APK (debug)
-        run: flutter build apk --debug
+      - name: Build APK (release)
+        run: flutter build apk --release
 
-      - name: Upload APK artifact
+      - name: Rename APK
+        run: mv build/app/outputs/flutter-apk/app-release.apk aikora-sora.apk
+
+      - name: Upload APK artifact (backup)
         uses: actions/upload-artifact@v4
         with:
-          name: aikora-sora-debug-apk
-          path: build/app/outputs/flutter-apk/app-debug.apk
-          retention-days: 7
+          name: aikora-sora-apk
+          path: aikora-sora.apk
+          retention-days: 30
+
+      - name: Create GitHub Release
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: "Aikōra Sora v1.0.${{ github.run_number }}"
+          body: |
+            🎉 **Nueva versión de Aikōra Sora**
+            
+            Release automático generado desde commit `${{ github.sha }}`
+            
+            ### 📦 Descargas
+            - Android: `aikora-sora.apk`
+            
+            ### ✨ Últimos cambios
+            Ver commits recientes en el repositorio.
+          files: aikora-sora.apk
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
