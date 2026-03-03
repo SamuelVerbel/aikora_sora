@@ -143,7 +143,9 @@ class AppRoutes {
       // ── RESTAURANTS ──
       case restaurants:
         return MaterialPageRoute(
-            builder: (_) => const RestaurantsScreen());
+          builder: (_) => const RestaurantsScreen(),
+          settings: settings, // ← ESTO es lo que faltaba
+        );
 
       // ── DEFAULT ──
       default:
