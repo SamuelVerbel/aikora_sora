@@ -1,27 +1,305 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-  <base href="/aikora_sora/">
-
-  <meta charset="UTF-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=Edge">
-  <meta name="description" content="Aikōra Sora — Viajes inteligentes con IA local">
-
-  <!-- Google Sign-In -->
-  <meta name="google-signin-client_id" content="391506860870-4nunkh8jd4uv08trv0i3kkkjvadh9pv0.apps.googleusercontent.com">
-
-  <!-- iOS / PWA -->
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="Aikōra Sora">
-
-  <!-- Favicon -->
-  <link rel="icon" type="image/png" href="icons/Icon-192.png"/>
-
-  <title>Aikōra Sora</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aikōra Sora — Viajes inteligentes con IA local</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 </head>
-
 <body>
-  <script src="flutter_bootstrap.js" async></script>
+  <!-- NAVBAR -->
+  <header class="nav">
+    <div class="nav-left">
+      <img src="assets/logo/app_icon.png" alt="Aikōra Sora logo" class="nav-logo" />
+      <span class="nav-title">Aikōra Sora</span>
+    </div>
+    <nav class="nav-links">
+      <a href="#features">Características</a>
+      <a href="#screens">Pantallas</a>
+      <a href="#how-it-works">Cómo funciona</a>
+      <a href="#tech">Tecnología</a>
+    </nav>
+    <a href="#download" class="nav-cta">Descargar APK</a>
+  </header>
+
+  <!-- HERO -->
+  <section class="hero" id="top">
+    <div class="hero-content">
+      <div class="hero-text">
+        <div class="hero-pill">App SENA · Proyecto de turismo inteligente</div>
+        <h1>
+          Planifica viajes
+          <span>inteligentes</span>
+          con ayuda de IA local.
+        </h1>
+        <p>
+          Explora destinos, crea itinerarios personalizados, guarda reservas y recibe recomendaciones
+          según tus gustos, todo desde tu móvil y con foco en privacidad.
+        </p>
+        <div class="hero-buttons" id="download">
+          <a
+            href="https://github.com/SamuelVerbel/aikora_sora/releases/latest/download/aikora-sora.apk"
+            class="btn btn-primary"
+          >
+            ⬇️ Descargar APK (Android)
+          </a>
+          <a href="https://samuelverbel.github.io/aikora_sora/app" class="btn btn-secondary">
+            🌐 Abrir versión Web
+          </a>
+        </div>
+        <p class="hero-meta">
+          v1.0.0 · Funciona offline en muchas secciones · Sin publicidad
+        </p>
+      </div>
+
+      <div class="hero-phone">
+        <div class="phone-frame">
+          <div class="phone-status-bar">
+            <span>Aikōra Sora</span>
+            <span>✈️</span>
+          </div>
+          <div class="phone-screen">
+            <img src="assets/screens/welcome.png" alt="Pantalla de bienvenida" />
+          </div>
+        </div>
+
+        <div class="hero-badges">
+          <div class="hero-badge">
+            <span>🔐</span>
+            <div>
+              <h4>Login seguro</h4>
+              <p>Google + email/contraseña con Supabase Auth.</p>
+            </div>
+          </div>
+          <div class="hero-badge">
+            <span>🤖</span>
+            <div>
+              <h4>IA local</h4>
+              <p>Itinerarios generados según preferencias y destino.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="section" id="features">
+    <h2>¿Qué puedes hacer con Aikōra Sora?</h2>
+    <p class="section-subtitle">
+      La app está pensada como un asistente de viaje completo, desde la exploración hasta la reserva.
+    </p>
+
+    <div class="feature-grid">
+      <article class="feature-card">
+        <div class="feature-icon">🗺️</div>
+        <h3>Explorar destinos</h3>
+        <p>
+          Descubre destinos turísticos con fotos, clima estimado, actividades sugeridas, rango de precios
+          y tags que facilitan el filtrado.
+        </p>
+      </article>
+
+      <article class="feature-card">
+        <div class="feature-icon">📅</div>
+        <h3>Planear viajes con IA</h3>
+        <p>
+          Selecciona destino, fechas, presupuesto y estilo de viaje; la app genera
+          un itinerario día a día basado en los datos reales del destino.
+        </p>
+      </article>
+
+      <article class="feature-card">
+        <div class="feature-icon">📌</div>
+        <h3>Reservas inteligentes</h3>
+        <p>
+          Crea y gestiona reservas vinculadas a tus destinos favoritos.
+          Todo se guarda en Supabase, protegido por políticas RLS.
+        </p>
+      </article>
+
+      <article class="feature-card">
+        <div class="feature-icon">👤</div>
+        <h3>Perfil y preferencias</h3>
+        <p>
+          Configura intereses (naturaleza, cultura, gastronomía, playa, aventura),
+          idioma preferido y presupuesto para personalizar recomendaciones.
+        </p>
+      </article>
+
+      <article class="feature-card">
+        <div class="feature-icon">🌙</div>
+        <h3>Modo oscuro dinámico</h3>
+        <p>
+          Tema claro/oscuro a nivel global controlado por un ThemeProvider, con colores
+          consistentes en todas las pantallas.
+        </p>
+      </article>
+
+      <article class="feature-card">
+        <div class="feature-icon">📍</div>
+        <h3>Geolocalización</h3>
+        <p>
+          Usa tu ubicación actual para ordenar los destinos por cercanía y descubrir opciones
+          cerca de ti.
+        </p>
+      </article>
+    </div>
+  </section>
+
+  <!-- SCREENS (MOCKUP CSS) -->
+  <section class="section section-alt" id="screens">
+    <h2>Interfaz de la app</h2>
+    <p class="section-subtitle">
+      Diseño limpio, moderno y consistente. Todas las pantallas siguen el mismo sistema de diseño.
+    </p>
+
+    <div class="screens-grid">
+      <div class="screen-card">
+        <div class="screen-mockup screen-welcome">
+          <div class="mockup-icon">🎨</div>
+          <div class="mockup-lines">
+            <div class="mockup-line"></div>
+            <div class="mockup-line short"></div>
+            <div class="mockup-line"></div>
+          </div>
+        </div>
+        <h3>Welcome</h3>
+        <p>Hero con logo, tagline y acceso directo a crear cuenta o iniciar sesión.</p>
+      </div>
+
+      <div class="screen-card">
+        <div class="screen-mockup screen-home">
+          <div class="mockup-icon">🏠</div>
+          <div class="mockup-lines">
+            <div class="mockup-line short"></div>
+            <div class="mockup-line"></div>
+            <div class="mockup-line short"></div>
+          </div>
+        </div>
+        <h3>Home personalizado</h3>
+        <p>Saludo con nombre y avatar, destinos recomendados, categorías y accesos rápidos.</p>
+      </div>
+
+      <div class="screen-card">
+        <div class="screen-mockup screen-explore">
+          <div class="mockup-icon">🔍</div>
+          <div class="mockup-lines">
+            <div class="mockup-line"></div>
+            <div class="mockup-line"></div>
+            <div class="mockup-line short"></div>
+          </div>
+        </div>
+        <h3>Explorar destinos</h3>
+        <p>Búsqueda por ciudad/país, filtros, orden por distancia y cards con rating y resumen.</p>
+      </div>
+
+      <div class="screen-card">
+        <div class="screen-mockup screen-profile">
+          <div class="mockup-icon">👤</div>
+          <div class="mockup-lines">
+            <div class="mockup-line short"></div>
+            <div class="mockup-line short"></div>
+            <div class="mockup-line"></div>
+          </div>
+        </div>
+        <h3>Perfil y preferencias</h3>
+        <p>Vista tipo startup, modo oscuro, edición de nombre, gestión de preferencias y logout.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="section" id="how-it-works">
+    <h2>Cómo funciona Aikōra Sora</h2>
+    <p class="section-subtitle">
+      Arquitectura simple pero potente, pensada para funcionar bien en móvil y ser fácil de mantener.
+    </p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-number">1</div>
+        <h3>Autenticación segura</h3>
+        <p>
+          El usuario crea cuenta o inicia sesión con Google o email/contraseña.
+          Supabase se encarga de la autenticación y de crear el perfil base.
+        </p>
+      </div>
+
+      <div class="step">
+        <div class="step-number">2</div>
+        <h3>Datos desde Supabase</h3>
+        <p>
+          Destinos, reservas y perfiles se almacenan en PostgreSQL. La app se comunica mediante
+          servicios (`DestinationsRepository`, `ReservationsService`, `ProfileService`).
+        </p>
+      </div>
+
+      <div class="step">
+        <div class="step-number">3</div>
+        <h3>IA local y preferencias</h3>
+        <p>
+          Las preferencias guardadas en el dispositivo y en Supabase se usan para ordenar destinos
+          y generar itinerarios dinámicos para cada viaje.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- TECH -->
+  <section class="section section-alt" id="tech">
+    <h2>Tecnologías utilizadas</h2>
+    <p class="section-subtitle">
+      Toda la app está construida con herramientas modernas, fáciles de mantener y 100% open source.
+    </p>
+
+    <div class="tech-grid">
+      <div class="tech-card">
+        <h3>Flutter</h3>
+        <p>Interfaz móvil multiplataforma con navegación, temas y widgets personalizados.</p>
+      </div>
+
+      <div class="tech-card">
+        <h3>Supabase</h3>
+        <p>Backend con PostgreSQL, Auth, almacenamiento y políticas de seguridad RLS.</p>
+      </div>
+
+      <div class="tech-card">
+        <h3>Shared Preferences</h3>
+        <p>Almacenamiento local de preferencias y configuración de la app.</p>
+      </div>
+
+      <div class="tech-card">
+        <h3>Geolocator</h3>
+        <p>Obtener la ubicación del usuario para ordenar destinos por cercanía.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <img src="assets/logo/app_icon.png" alt="Logo" />
+        <div>
+          <h4>Aikōra Sora</h4>
+          <p>Proyecto académico de turismo inteligente con IA · SENA</p>
+        </div>
+      </div>
+
+      <div class="footer-links">
+        <a href="#top">Volver arriba</a>
+        <a href="https://github.com/SamuelVerbel/aikora_sora" target="_blank">Ver código en GitHub</a>
+        <span>Cartagena de Indias, Colombia 🇨🇴</span>
+      </div>
+    </div>
+
+    <p class="footer-copy">
+      © 2026 Samuel Verbel · Todos los derechos reservados.
+    </p>
+  </footer>
 </body>
 </html>
