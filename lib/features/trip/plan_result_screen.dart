@@ -3,12 +3,9 @@ import '../../core/theme/app_colors.dart';
 import '../../core/routes/app_routes.dart';
 import '../reservations/reservations_service.dart';
 
-/// Muestra el itinerario "Generado por IA". 
-/// NOTA: Actualmente es una IA *simulada* localmente mediante arreglos y lógica matemática,
-/// hasta que en el futuro la conectemos a una API real (como Gemini u OpenAI).
+/// Muestra el itinerario generado por IA simulada localmente.
 class PlanResultScreen extends StatefulWidget {
-  final Map<String, dynamic> args; // Recibe toda la info del formulario anterior
-
+  final Map<String, dynamic> args;
   const PlanResultScreen({super.key, required this.args});
 
   @override
@@ -16,12 +13,11 @@ class PlanResultScreen extends StatefulWidget {
 }
 
 class _PlanResultScreenState extends State<PlanResultScreen> {
-  bool _isSaving = false; // Controla el spinner al guardar en base de datos
-  bool _saved = false;    // Indica si el plan ya se guardó en "Mis Reservas"
+  bool _isSaving = false;
+  bool _saved = false;
 
-  // ── Getters para extraer los argumentos de forma limpia ──────────────
-  String get _destinationName =>
-      widget.args['destination_name'] ?? 'Destino';
+  // ── Getters ──────────────────────────────────────────────────────────
+  String get _destinationName => widget.args['destination_name'] ?? 'Destino';
   String? get _destinationId => widget.args['destination_id'];
   String get _budget => widget.args['budget'] ?? '0';
   String get _type => widget.args['type'] ?? 'Cultural';
@@ -30,13 +26,20 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
   int get _travelers => widget.args['travelers'] ?? 1;
   List<String> get _activities =>
       List<String>.from(widget.args['activities'] ?? []);
+  String get _city => widget.args['city'] ?? '';
+  String get _country => widget.args['country'] ?? '';
 
-  /// Calcula cuántos días dura el viaje
   int get _numDays {
     if (_startDate != null && _endDate != null) {
       return _endDate!.difference(_startDate!).inDays + 1;
     }
-    return 3; // Por defecto 3 días si hay algún error
+    return 3;
+  }
+
+  /// Costo estimado por día dividiendo el presupuesto total entre los días
+  double get _budgetPerDay {
+    final total = double.tryParse(_budget) ?? 0;
+    return _numDays > 0 ? total / _numDays : 0;
   }
 
   String _formatDate(DateTime? date) {
@@ -48,40 +51,69 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
     return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 
-  /// 🤖 LOGICA IA SIMULADA 🤖
-  /// Distribuye las actividades del destino entre el número de días disponibles.
-  List<Map<String, String>> _buildItinerary() {
-    // Títulos de ejemplo según el estilo de viaje
-    final Map<String, List<String>> titles = {
-      'Cultural': ['Exploración histórica', 'Arte y tradición', 'Día de museos', 'Patrimonio local'],
-      'Aventura': ['Actividades al aire libre', 'Exploración extrema', 'Naturaleza salvaje', 'Adrenalina máxima'],
-      'Relax': ['Bienestar y descanso', 'Spa y naturaleza', 'Tarde tranquila', 'Día libre'],
-      'Gastronómico': ['Sabores locales', 'Tour de mercados', 'Cocina gourmet', 'Cenas especiales'],
-      'Familiar': ['Diversión en familia', 'Juegos y parques', 'Paseo familiar', 'Experiencias compartidas'],
-    };
-    
-    final dayTitles = titles[_type] ?? titles['Cultural']!;
-    final acts = List<String>.from(_activities);
-    final List<Map<String, String>> days = [];
+  // ── LÓGICA IA SIMULADA ──────────────────────────────────────────────
 
-    // Por cada día del viaje, crea un objeto de itinerario
+  /// Títulos de cada día según estilo de viaje
+  final Map<String, List<String>> _dayTitles = {
+    'Cultural': ['Exploración histórica', 'Arte y tradición', 'Día de museos', 'Patrimonio local'],
+    'Aventura': ['Actividades al aire libre', 'Exploración extrema', 'Naturaleza salvaje', 'Adrenalina máxima'],
+    'Relax': ['Bienestar y descanso', 'Spa y naturaleza', 'Tarde tranquila', 'Día libre'],
+    'Gastronómico': ['Sabores locales', 'Tour de mercados', 'Cocina gourmet', 'Cenas especiales'],
+    'Familiar': ['Diversión en familia', 'Juegos y parques', 'Paseo familiar', 'Experiencias compartidas'],
+  };
+
+  /// Actividades por franja horaria según estilo
+  Map<String, List<String>> get _timeSlots {
+    const map = {
+      'Cultural': {
+        'morning': ['Visita al centro histórico', 'Recorrido por monumentos', 'Tour guiado al amanecer'],
+        'afternoon': ['Museo de arte local', 'Barrios tradicionales', 'Galería de arte contemporáneo'],
+        'evening': ['Cena típica de la región', 'Espectáculo cultural', 'Plaza central al atardecer'],
+      },
+      'Aventura': {
+        'morning': ['Senderismo en la montaña', 'Rafting en el río', 'Escalada en roca'],
+        'afternoon': ['Rappel y tirolesa', 'Exploración de cuevas', 'Ciclismo de montaña'],
+        'evening': ['Fogata y estrellas', 'Campamento base', 'Cena en la naturaleza'],
+      },
+      'Relax': {
+        'morning': ['Yoga al amanecer', 'Meditación en la playa', 'Desayuno gourmet lento'],
+        'afternoon': ['Spa y masajes', 'Piscina y lectura', 'Caminata tranquila'],
+        'evening': ['Atardecer con cóctel', 'Cena romántica', 'Baño termal nocturno'],
+      },
+      'Gastronómico': {
+        'morning': ['Mercado local y degustación', 'Desayuno típico tradicional', 'Tour de café y cacao'],
+        'afternoon': ['Clase de cocina local', 'Almuerzo en restaurante top', 'Visita a viñedo o hacienda'],
+        'evening': ['Cena de chef reconocido', 'Maridaje de vinos', 'Postre en café histórico'],
+      },
+      'Familiar': {
+        'morning': ['Parque temático o zoo', 'Actividades interactivas', 'Desayuno buffet en familia'],
+        'afternoon': ['Playa o piscina familiar', 'Juegos al aire libre', 'Taller de manualidades'],
+        'evening': ['Cena familiar temática', 'Show o espectáculo', 'Helados y paseo nocturno'],
+      },
+    };
+    return Map<String, List<String>>.from(
+      (map[_type] ?? map['Cultural']!).map(
+        (k, v) => MapEntry(k, List<String>.from(v)),
+      ),
+    );
+  }
+
+  /// Construye el itinerario completo con franjas horarias
+  List<Map<String, dynamic>> _buildItinerary() {
+    final dayTitles = _dayTitles[_type] ?? _dayTitles['Cultural']!;
+    final slots = _timeSlots;
+    final acts = List<String>.from(_activities);
+    final List<Map<String, dynamic>> days = [];
+
     for (int i = 0; i < _numDays; i++) {
-      final List<String> dayActs = [];
-      
-      // Si el destino tiene actividades en BD, reparte X actividades por día
+      // Distribuye actividades reales del destino en la mañana
+      final List<String> realActs = [];
       if (acts.isNotEmpty) {
-        final perDay = (acts.length / _numDays).ceil();
+        final perDay = (acts.length / _numDays).ceil().clamp(1, 3);
         final start = (i * perDay).clamp(0, acts.length);
         final end = ((i + 1) * perDay).clamp(0, acts.length);
-        if (start < acts.length) dayActs.addAll(acts.sublist(start, end));
+        if (start < acts.length) realActs.addAll(acts.sublist(start, end));
       }
-
-      // Si nos quedamos sin actividades reales para mostrar en un día, usamos textos genéricos
-      final description = dayActs.isNotEmpty
-          ? dayActs
-              .map((a) => a[0].toUpperCase() + a.substring(1)) // Mayúscula inicial
-              .join(' · ') // Las une con un punto medio
-          : _genericDesc(i);
 
       days.add({
         'day': 'Día ${i + 1}',
@@ -89,59 +121,62 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
             ? _formatDate(_startDate!.add(Duration(days: i)))
             : '',
         'title': dayTitles[i % dayTitles.length],
-        'description': description,
+        // Franja mañana: usa actividades reales del destino si las hay
+        'morning': realActs.isNotEmpty
+            ? realActs.map((a) => a[0].toUpperCase() + a.substring(1)).join(', ')
+            : slots['morning']![i % slots['morning']!.length],
+        'afternoon': slots['afternoon']![i % slots['afternoon']!.length],
+        'evening': slots['evening']![i % slots['evening']!.length],
+        'budget': _budgetPerDay,
       });
     }
     return days;
   }
 
-  /// Textos de relleno por si el destino de Supabase no tiene suficientes actividades reales guardadas
-  String _genericDesc(int day) {
-    final Map<String, List<String>> descs = {
+  /// Recomendaciones finales según estilo y destino
+  List<Map<String, String>> get _recommendations {
+    final Map<String, List<Map<String, String>>> recs = {
       'Cultural': [
-        'Visita al centro histórico y gastronomía local.',
-        'Exploración de barrios y arquitectura tradicional.',
-        'Recorrido cultural y compras de artesanías.',
+        {'icon': '🎫', 'text': 'Compra entradas de museos con anticipación'},
+        {'icon': '🗺️', 'text': 'Contratar un guía local enriquece la experiencia'},
+        {'icon': '📷', 'text': 'Lleva cámara — hay mucho que fotografiar'},
       ],
       'Aventura': [
-        'Deportes al aire libre y exploración de la zona.',
-        'Senderismo y contacto con la naturaleza.',
-        'Actividades extremas en entornos naturales.',
+        {'icon': '🥾', 'text': 'Lleva calzado resistente e impermeable'},
+        {'icon': '🧴', 'text': 'Protector solar y repelente son esenciales'},
+        {'icon': '💧', 'text': 'Hidratación constante durante actividades físicas'},
       ],
       'Relax': [
-        'Amanecer tranquilo, spa y descanso.',
-        'Paseo lento, lectura y gastronomía sin prisa.',
-        'Piscina y atardecer en lugar especial.',
+        {'icon': '📵', 'text': 'Desconéctate del trabajo para aprovechar al máximo'},
+        {'icon': '🛏️', 'text': 'Reserva con anticipación hoteles con spa'},
+        {'icon': '🌅', 'text': 'Los amaneceres y atardeceres son imperdibles'},
       ],
       'Gastronómico': [
-        'Mercado local, almuerzo gourmet y cena especial.',
-        'Tour por cocinas locales y degustación.',
-        'Clase de cocina local y cena de cierre.',
+        {'icon': '🍽️', 'text': 'Reserva en restaurantes top con mínimo 1 semana'},
+        {'icon': '💬', 'text': 'Pregunta a los locales por los mejores escondites'},
+        {'icon': '🌶️', 'text': 'Atrévete a probar platillos desconocidos'},
       ],
       'Familiar': [
-        'Parques y restaurantes familiares.',
-        'Paseo por zonas seguras y divertidas.',
-        'Compras, souvenirs y actividades para todos.',
+        {'icon': '🎒', 'text': 'Lleva snacks y agua para los niños siempre'},
+        {'icon': '🏥', 'text': 'Ten a mano el seguro médico viajero'},
+        {'icon': '🗓️', 'text': 'Planea descansos entre actividades para los más pequeños'},
       ],
     };
-    final list = descs[_type] ?? descs['Cultural']!;
-    return list[day % list.length];
+    return recs[_type] ?? recs['Cultural']!;
   }
 
-  /// Guarda el itinerario en la tabla `reservations` de Supabase
+  // ── GUARDAR RESERVA ─────────────────────────────────────────────────
   Future<void> _saveReservation() async {
-    // Validaciones de seguridad antes de guardar
     if (_destinationId == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text(
-            'Este plan no tiene un destino vinculado a la base de datos'),
+        content: Text('Este plan no tiene destino vinculado'),
         backgroundColor: Colors.orange,
       ));
       return;
     }
     if (_startDate == null || _endDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('No hay fechas para guardar la reserva'),
+        content: Text('No hay fechas para guardar'),
         backgroundColor: Colors.orange,
       ));
       return;
@@ -149,7 +184,6 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
 
     setState(() => _isSaving = true);
     try {
-      // Llama a Supabase para inyectar los datos en la tabla (Requiere RLS configurado)
       await ReservationsService().createReservation(
         destinationId: _destinationId!,
         startDate: _startDate!,
@@ -157,9 +191,8 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
         travelers: _travelers,
         notes: 'Plan IA · Estilo: $_type · Presupuesto: \$$_budget USD',
       );
-      
       if (mounted) {
-        setState(() => _saved = true); // Cambia el estado del botón a verde (Guardado)
+        setState(() => _saved = true);
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text('✅ Reserva guardada exitosamente'),
           backgroundColor: Colors.green,
@@ -177,9 +210,9 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
     }
   }
 
+  // ── BUILD ────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    // Generamos el itinerario justo al pintar la UI
     final itinerary = _buildItinerary();
 
     return Scaffold(
@@ -189,12 +222,21 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+
+            // ── Título ──────────────────────────────────────────────────
             Text('Viaje a $_destinationName',
                 style: const TextStyle(
                     fontSize: 26, fontWeight: FontWeight.bold)),
+            if (_city.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text('$_city, $_country',
+                    style: TextStyle(
+                        color: Colors.grey[500], fontSize: 14)),
+              ),
             const SizedBox(height: 14),
 
-            // ── Resumen de datos ingresados en pantalla anterior ───────────
+            // ── Chips resumen ───────────────────────────────────────────
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -203,8 +245,7 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
                 _Chip(icon: Icons.explore, text: _type),
                 _Chip(
                     icon: Icons.people,
-                    text:
-                        '$_travelers viajero${_travelers > 1 ? 's' : ''}'),
+                    text: '$_travelers viajero${_travelers > 1 ? 's' : ''}'),
                 if (_startDate != null)
                   _Chip(
                       icon: Icons.calendar_today,
@@ -213,18 +254,21 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
                 _Chip(
                     icon: Icons.schedule,
                     text: '$_numDays día${_numDays > 1 ? 's' : ''}'),
+                _Chip(
+                    icon: Icons.savings_outlined,
+                    text:
+                        '~\$${_budgetPerDay.toStringAsFixed(0)}/día'),
               ],
             ),
 
             const SizedBox(height: 30),
 
-            // ── Título del Itinerario ──────────────────────────────────────
+            // ── Header Itinerario ───────────────────────────────────────
             Row(children: [
               const Text('Itinerario generado por IA',
                   style: TextStyle(
                       fontSize: 20, fontWeight: FontWeight.w600)),
               const SizedBox(width: 8),
-              // Etiqueta que aclara que esto es simulado
               Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -239,29 +283,74 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
                         fontWeight: FontWeight.bold)),
               ),
             ]),
-            const SizedBox(height: 4),
+                        const SizedBox(height: 4),
             Text('Basado en actividades reales del destino',
                 style: TextStyle(color: Colors.grey[500], fontSize: 13)),
             const SizedBox(height: 20),
 
-            // ── Renderizado de Días (Tarjetas iterativas) ───────────────────
-            ...itinerary
-                .map((day) => _DayCard(
-                      day: day['day']!,
-                      date: day['date']!,
-                      title: day['title']!,
-                      description: day['description']!,
-                    ))
-                ,
+            // ── Tarjetas de días ────────────────────────────────────────
+            ...itinerary.map((day) => _DayCard(
+                  day: day['day']!,
+                  date: day['date']!,
+                  title: day['title']!,
+                  morning: day['morning']!,
+                  afternoon: day['afternoon']!,
+                  evening: day['evening']!,
+                  budgetPerDay: day['budget'] as double,
+                )),
 
             const SizedBox(height: 30),
 
-            // ── Botón Final: Guardar en "Mis Reservas" ─────────────────────
+            // ── Recomendaciones IA ──────────────────────────────────────
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AppColors.accent.withOpacity(0.06),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                    color: AppColors.accent.withOpacity(0.2)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(children: [
+                    Icon(Icons.auto_awesome,
+                        color: AppColors.accent, size: 20),
+                    SizedBox(width: 8),
+                    Text('Recomendaciones de la IA',
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.accent)),
+                  ]),
+                  const SizedBox(height: 14),
+                  ..._recommendations.map((rec) => Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(rec['icon']!,
+                                style: const TextStyle(fontSize: 18)),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(rec['text']!,
+                                  style: const TextStyle(
+                                      fontSize: 14, height: 1.4)),
+                            ),
+                          ],
+                        ),
+                      )),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 30),
+
+            // ── Botón guardar ───────────────────────────────────────────
             SizedBox(
               width: double.infinity,
               height: 54,
               child: ElevatedButton.icon(
-                // Cambia icono y texto dependiendo de si ya se guardó
                 icon: Icon(
                     _saved ? Icons.check_circle : Icons.bookmark_border,
                     color: Colors.white),
@@ -275,13 +364,10 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16)),
                 ),
-                // Se deshabilita si está guardando o si ya guardó
-                onPressed:
-                    _saved || _isSaving ? null : _saveReservation,
+                onPressed: _saved || _isSaving ? null : _saveReservation,
               ),
             ),
 
-            // ── Botón extra que aparece solo DESPUÉS de guardar ─────────────
             if (_saved) ...[
               const SizedBox(height: 12),
               SizedBox(
@@ -289,8 +375,8 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
                 child: OutlinedButton.icon(
                   icon: const Icon(Icons.list_alt),
                   label: const Text('Ver mis reservas'),
-                  onPressed: () =>
-                      Navigator.pushNamed(context, AppRoutes.reservations),
+                  onPressed: () => Navigator.pushNamed(
+                      context, AppRoutes.reservations),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
@@ -308,11 +394,8 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
   }
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// COMPONENTES SECUNDARIOS
-// ────────────────────────────────────────────────────────────────────────────
+// ── COMPONENTES ─────────────────────────────────────────────────────────────
 
-/// Pastilla gris para el resumen de presupuesto, fecha, etc.
 class _Chip extends StatelessWidget {
   final IconData icon;
   final String text;
@@ -338,43 +421,153 @@ class _Chip extends StatelessWidget {
   }
 }
 
-/// Tarjeta blanca con sombra que muestra la info de 1 día específico del itinerario
 class _DayCard extends StatelessWidget {
-  final String day, date, title, description;
-  const _DayCard(
-      {required this.day,
-      required this.date,
-      required this.title,
-      required this.description});
+  final String day, date, title, morning, afternoon, evening;
+  final double budgetPerDay;
+
+  const _DayCard({
+    required this.day,
+    required this.date,
+    required this.title,
+    required this.morning,
+    required this.afternoon,
+    required this.evening,
+    required this.budgetPerDay,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       elevation: 3,
-      shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Text(day,
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.accent)),
-            if (date.isNotEmpty)
-              Text(date,
-                  style: TextStyle(color: Colors.grey[500], fontSize: 12)),
-          ]),
-          const SizedBox(height: 6),
-          Text(title,
-              style: const TextStyle(
-                  fontSize: 18, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 6),
-          Text(description,
-              style: TextStyle(color: Colors.grey[600], height: 1.5)),
-        ]),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+
+            // Header del día
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(day,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.accent)),
+                if (date.isNotEmpty)
+                  Text(date,
+                      style: TextStyle(
+                          color: Colors.grey[500], fontSize: 12)),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(title,
+                    style: const TextStyle(
+                        fontSize: 17, fontWeight: FontWeight.w600)),
+                if (budgetPerDay > 0)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '~\$${budgetPerDay.toStringAsFixed(0)}',
+                      style: const TextStyle(
+                          color: Colors.green,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold),
+                    ),
+                  ),
+              ],
+            ),
+
+            const Divider(height: 20),
+
+            // Franja mañana
+            _TimeSlot(
+              icon: Icons.wb_sunny_outlined,
+              label: 'Mañana',
+              color: Colors.orange,
+              text: morning,
+            ),
+            const SizedBox(height: 10),
+
+            // Franja tarde
+            _TimeSlot(
+              icon: Icons.wb_cloudy_outlined,
+              label: 'Tarde',
+              color: Colors.blue,
+              text: afternoon,
+            ),
+            const SizedBox(height: 10),
+
+            // Franja noche
+            _TimeSlot(
+              icon: Icons.nights_stay_outlined,
+              label: 'Noche',
+              color: Colors.indigo,
+              text: evening,
+            ),
+          ],
+        ),
       ),
+    );
+  }
+}
+
+class _TimeSlot extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final String text;
+
+  const _TimeSlot({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.text,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 16, color: color),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label,
+                  style: TextStyle(
+                      fontSize: 11,
+                      color: color,
+                      fontWeight: FontWeight.w600)),
+              const SizedBox(height: 2),
+              Text(text,
+                  style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey[700],
+                      height: 1.4)),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
