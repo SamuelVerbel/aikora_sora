@@ -1,16 +1,41 @@
-# flutter_application_1
+Aikōra Sora
 
-A new Flutter project.
+Explora. Descubre. Vive el destino.
 
-## Getting Started
+Aikōra Sora es una aplicación móvil desarrollada en Flutter enfocada en la exploración inteligente de destinos turísticos, combinando experiencia visual premium, personalización de usuario y backend moderno con Supabase.
 
-This project is a starting point for a Flutter application.
+🚀 Visión del Proyecto
 
-A few resources to get you started if this is your first Flutter project:
+Aikōra Sora busca transformar la manera en que las personas descubren destinos turísticos, ofreciendo:
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+Exploración visual intuitiva
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Sistema de autenticación moderno
+
+Perfil personalizable
+
+Recomendaciones inteligentes
+
+Arquitectura escalable y modular
+
+🛠️ Stack Tecnológico
+
+Flutter (Frontend)
+
+Dart
+
+Supabase (Auth + Backend)
+
+Git & GitHub (Control de versiones)
+
+Arquitectura modular por features
+
+Licencia
+
+Proyecto en desarrollo. Uso académico y experimental.
+
+✨ Autor
+
+Samuel Verbel
+Desarrollador en formación – Ingeniería de Sistemas
+Cartagena, Colombia
