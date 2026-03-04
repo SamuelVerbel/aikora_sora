@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart'; // kIsWeb
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Servicio que encapsula todo lo relacionado con autenticación.
@@ -7,20 +8,19 @@ class AuthService {
   // Cliente principal de Supabase (ya inicializado en main.dart)
   final SupabaseClient _supabase = Supabase.instance.client;
 
-  /// Iniciar sesión con Google (en móvil abre Custom Tabs / navegador).
-  /// - Si el usuario no existe, Supabase crea la cuenta.
-  /// - Si ya existe, solo hace login.
+  /// Iniciar sesión con Google.
+  /// - En móvil: usa deep link (Custom Tabs / navegador nativo)
+  /// - En web: Supabase maneja el redirect automáticamente (null)
   Future<void> signInWithGoogle() async {
     try {
       await _supabase.auth.signInWithOAuth(
         OAuthProvider.google,
-        // Esquema de redirección configurado en android/ios (deep link)
-        redirectTo: 'com.aikorasora.app://login-callback/',
+        redirectTo: kIsWeb
+            ? null // Web: Supabase lo resuelve solo
+            : 'com.aikorasora.app://login-callback/', // Móvil: deep link
       );
     } catch (e) {
-      // Imprime el error en consola para depurar
       print('Error en Google OAuth: $e');
-      // rethrow = vuelve a lanzar la excepción para que la capa UI la maneje
       rethrow;
     }
   }
@@ -69,7 +69,6 @@ class AuthService {
   User? get currentUser => _supabase.auth.currentUser;
 
   /// Obtener la sesión activa (incluye tokens, expiración, etc.).
-  /// Útil si quieres revisar info extra, aunque normalmente con `currentUser` es suficiente.
   Future<Session?> getSession() async {
     return _supabase.auth.currentSession;
   }
