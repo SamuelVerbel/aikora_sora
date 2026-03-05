@@ -1,41 +1,95 @@
-Aikōra Sora
+# Aikōra Sora
 
-Explora. Descubre. Vive el destino.
+**Explora. Descubre. Vive el destino.**
 
-Aikōra Sora es una aplicación móvil desarrollada en Flutter enfocada en la exploración inteligente de destinos turísticos, combinando experiencia visual premium, personalización de usuario y backend moderno con Supabase.
+Aikōra Sora es una aplicación móvil desarrollada con Flutter enfocada en la exploración inteligente de destinos turísticos, combinando una experiencia visual moderna con un backend escalable basado en Supabase.
 
-🚀 Visión del Proyecto
+---
 
-Aikōra Sora busca transformar la manera en que las personas descubren destinos turísticos, ofreciendo:
+## 🚀 Visión del Proyecto
 
-Exploración visual intuitiva
+Aikōra Sora busca transformar la manera en que las personas descubren destinos turísticos mediante una experiencia intuitiva, personalizada y visualmente atractiva.
 
-Sistema de autenticación moderno
+El objetivo es crear una plataforma que permita a los usuarios:
 
-Perfil personalizable
+* Explorar destinos turísticos de forma visual e interactiva
+* Gestionar perfiles personalizados
+* Descubrir recomendaciones inteligentes
+* Acceder a información relevante de cada destino
 
-Recomendaciones inteligentes
+---
 
-Arquitectura escalable y modular
+## ✨ Características
 
-🛠️ Stack Tecnológico
+* Autenticación de usuarios
+* Exploración de destinos turísticos
+* Perfil de usuario personalizable
+* Arquitectura modular escalable
+* Integración con backend moderno
 
-Flutter (Frontend)
+---
 
-Dart
+## 🛠️ Stack Tecnológico
 
-Supabase (Auth + Backend)
+**Frontend**
 
-Git & GitHub (Control de versiones)
+* Flutter
+* Dart
 
-Arquitectura modular por features
+**Backend**
 
-Licencia
+* Supabase (Authentication + Database)
 
-Proyecto en desarrollo. Uso académico y experimental.
+**Herramientas**
 
-✨ Autor
+* Git
+* GitHub
 
-Samuel Verbel
-Desarrollador en formación – Ingeniería de Sistemas
+---
+
+## 📂 Arquitectura del Proyecto
+
+El proyecto sigue una arquitectura modular basada en **features**, lo que facilita la escalabilidad y el mantenimiento del código.
+
+Ejemplo de estructura:
+
+/lib
+/features
+/auth
+/home
+/profile
+/shared
+
+---
+
+## ⚙️ Instalación
+
+1. Clonar el repositorio
+
+git clone https://github.com/SamuelVerbel/aikora_sora.git
+
+2. Entrar al proyecto
+
+cd aikora_sora
+
+3. Instalar dependencias
+
+flutter pub get
+
+4. Ejecutar la aplicación
+
+flutter run
+
+---
+
+## 📌 Estado del Proyecto
+
+Proyecto actualmente en desarrollo como parte de aprendizaje en desarrollo móvil y arquitectura de software.
+
+---
+
+## 👨‍💻 Autor
+
+**Samuel Verbel**
+Desarrollador de Software en formación - Ingeniería de Sistemas
 Cartagena, Colombia
