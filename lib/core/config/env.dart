@@ -4,4 +4,6 @@ class Env {
 
   static const String supabaseAnonKey =
       'sb_publishable_7vO3We3UVf1hewsUdZHR7g_C4VB4wfv';
+
+  static const String googleMapsApiKey = 'AIzaSyAlYYW-U_t1OVrIaAT02xQth_wvTkJxNtQ';
 }

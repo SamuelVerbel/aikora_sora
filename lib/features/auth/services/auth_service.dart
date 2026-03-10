@@ -35,7 +35,7 @@ class AuthService {
       );
       return response.user;
     } catch (e) {
-      print('Error en login email: $e');
+      debugPrint('Error en login email: $e');
       rethrow;
     }
   }

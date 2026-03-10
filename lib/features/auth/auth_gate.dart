@@ -25,7 +25,7 @@ class _AuthGateState extends State<AuthGate> {
   bool _isLoading = true;
 
   // Importante: guardamos la suscripción para cancelarla en dispose()
-  StreamSubscription<AuthState>? _authSub;
+  StreamSubscription<AuthState>? _authSub; //
 
   @override
   void initState() {
@@ -54,19 +54,17 @@ class _AuthGateState extends State<AuthGate> {
     }
 
     // Listener global: reacciona a login / logout
-    _supabase.auth.onAuthStateChange.listen((data) {
-      final AuthChangeEvent event = data.event;
-      final Session? session = data.session;
+    _authSub = _supabase.auth.onAuthStateChange.listen((data) {
+        final AuthChangeEvent event = data.event;
+        final Session? session = data.session;
 
-      print('🔑 Auth state changed: $event');
-
-      if (event == AuthChangeEvent.signedIn && session != null) {
-        _handleUserSession(session.user);
-      } else if (event == AuthChangeEvent.signedOut) {
-        _redirectToWelcome();
-      }
-    });
-  }
+        if (event == AuthChangeEvent.signedIn && session != null) {
+          _handleUserSession(session.user);
+        } else if (event == AuthChangeEvent.signedOut) {
+          _redirectToWelcome();
+        }
+      });
+    }
 
   /// Cuando hay un usuario autenticado:
   /// 1) Sincronizamos el perfil (nombre/avatar) en la tabla profiles.

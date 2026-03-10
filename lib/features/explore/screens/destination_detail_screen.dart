@@ -89,26 +89,25 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
                         }
                       },
                       child: imageUrl.isNotEmpty
-    ? CachedNetworkImage(
-        imageUrl: imageUrl,
-        fit: BoxFit.cover,
-        width: double.infinity,
-        placeholder: (context, url) => Container(
-          color: Colors.grey[200],
-          child: const Center(
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-        ),
-        errorWidget: (context, url, error) => Container(
-          color: Colors.grey[300],
-          child: const Icon(Icons.image_not_supported, size: 60),
-        ),
-      )
-    : Container(
-        color: Colors.grey[300],
-        child: const Icon(Icons.image_not_supported, size: 60),
-      ),
-
+                      ? CachedNetworkImage(
+                        imageUrl: imageUrl,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        placeholder: (context, url) => Container(
+                          color: Colors.grey[200],
+                          child: const Center(
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
+                        errorWidget: (context, url, error) => Container(
+                          color: Colors.grey[300],
+                          child: const Icon(Icons.image_not_supported, size: 60),
+                        ),
+                      )
+                    : Container(
+                        color: Colors.grey[300],
+                        child: const Icon(Icons.image_not_supported, size: 60),
+                      ),
                     );
                   },
                 ),

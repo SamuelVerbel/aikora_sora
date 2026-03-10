@@ -43,3 +43,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Seguridad y Configuración
+lib/config/env.dart
+.env
