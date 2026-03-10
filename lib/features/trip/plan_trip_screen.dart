@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/routes/app_routes.dart';
 import '../explore/models/destination_model.dart';
+import '../trip/services/trip_service.dart';
+import '../trip/models/trip_model.dart';
 
 /// Pantalla donde el usuario ingresa sus preferencias (fechas, presupuesto,
 /// estilo de viaje y número de personas) antes de pasárselas a la "IA".
@@ -81,38 +83,48 @@ class _PlanTripScreenState extends State<PlanTripScreen> {
     return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 
-  /// Valida los datos y navega a la pantalla de Resultados pasándole todo el contexto
-  void _generatePlan() {
+  Future<void> _generatePlan() async {
     if (_budgetController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ingresa un presupuesto')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Ingresa un presupuesto')));
       return;
     }
+
     if (_startDate == null || _endDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Selecciona las fechas del viaje')));
       return;
     }
 
-    // Navega a PlanResultScreen y le pasa un Map con todos los datos recogidos
-    Navigator.pushNamed(
-      context,
-      AppRoutes.planResult,
-      arguments: {
-        'destination_name':
-            widget.preselectedDestination?.title ?? 'Destino libre',
-        'destination_id': widget.preselectedDestination?.id,
-        'budget': _budgetController.text,
-        'type': _selectedType,
-        'start_date': _startDate,
-        'end_date': _endDate,
-        'travelers': _travelers,
-        'activities':
-            widget.preselectedDestination?.activities ?? [],
-        'city': widget.preselectedDestination?.city ?? '',
-        'country': widget.preselectedDestination?.country ?? '',
-      },
+    final trip = Trip(
+      destinationName:
+          widget.preselectedDestination?.title ?? 'Destino libre',
+      destinationId: widget.preselectedDestination?.id,
+      type: _selectedType,
+      travelers: _travelers,
+      budget: double.parse(_budgetController.text),
+      startDate: _startDate!,
+      endDate: _endDate!,
     );
+
+    try {
+      final tripId = await TripService().createTrip(trip);
+
+      if (!mounted) return;
+
+      Navigator.pushNamed(
+        context,
+        AppRoutes.planResult,
+        arguments: {
+          'trip_id': tripId,
+          'trip': trip,
+        },
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error creando viaje: $e')),
+      );
+    }
   }
 
   @override

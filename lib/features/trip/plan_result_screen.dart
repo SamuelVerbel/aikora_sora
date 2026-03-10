@@ -13,6 +13,8 @@ class PlanResultScreen extends StatefulWidget {
 }
 
 class _PlanResultScreenState extends State<PlanResultScreen> {
+  List<Map<String, dynamic>>? _aiItinerary;
+  bool _loadingAI = true;
   bool _isSaving = false;
   bool _saved = false;
 
@@ -210,10 +212,33 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
     }
   }
 
+  Future<void> _loadAIPlan() async {
+    try {
+      final response = await ReservationsService()
+          .generateAIPlan(widget.args);
+
+      if (!mounted) return;
+
+      setState(() {
+        _aiItinerary = List<Map<String, dynamic>>.from(
+          response['days'] ?? [],
+        );
+        _loadingAI = false;
+      });
+    } catch (e) {
+      print('IA remota falló, usando IA local: $e');
+
+      setState(() {
+        _aiItinerary = null;
+        _loadingAI = false;
+      });
+    }
+  }
+
   // ── BUILD ────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    final itinerary = _buildItinerary();
+    final itinerary = _aiItinerary ?? _buildItinerary();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Tu plan personalizado ✨')),

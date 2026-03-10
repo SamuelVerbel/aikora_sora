@@ -412,6 +412,8 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
                     arguments: {
                       'destinationId': dest.id,
                       'destinationName': dest.title,
+                      'lat': dest.latitude != 0 ? dest.latitude : null,
+                      'lng': dest.longitude != 0 ? dest.longitude : null,
                     },
                   );
                 },
