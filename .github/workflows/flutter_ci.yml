@@ -12,52 +12,61 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 📥 Obtener código
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # 🐦 Instalar Flutter
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.x'
-          channel: 'stable'
+          channel: stable
           cache: true
 
+      # 📦 Dependencias
       - name: Install dependencies
         run: flutter pub get
 
-      # 🔐 PASO CLAVE: Crear el archivo env.dart usando los Secrets de GitHub
-      - name: Create Env Config
+      # 🔐 Crear env.dart desde GitHub Secrets
+      - name: Create env.dart
         run: |
-          mkdir -p lib/config
-          cat <<EOF > lib/config/env.dart
+          mkdir -p lib/core/config
+          cat <<EOF > lib/core/config/env.dart
           class Env {
-            static const String supabaseUrl = '${{ secrets.SUPABASE_URL }}';
-            static const String supabaseAnonKey = '${{ secrets.SUPABASE_ANON_KEY }}';
-            static const String googleMapsApiKey = '${{ secrets.GOOGLE_MAPS_API_KEY }}';
+            static const supabaseUrl = "${{ secrets.SUPABASE_URL }}";
+            static const supabaseAnonKey = "${{ secrets.SUPABASE_ANON_KEY }}";
+            static const googleMapsApiKey = "${{ secrets.GOOGLE_MAPS_API_KEY }}";
           }
           EOF
 
+      # 🔎 Análisis
       - name: Analyze code
         run: flutter analyze --no-fatal-infos
         continue-on-error: true
 
+      # 🧪 Tests
       - name: Run tests
         run: flutter test
         continue-on-error: true
 
+      # 📱 Build APK
       - name: Build APK (release)
         run: flutter build apk --release
 
+      # 🏷 Renombrar APK
       - name: Rename APK
         run: mv build/app/outputs/flutter-apk/app-release.apk aikora-sora.apk
 
-      - name: Upload APK artifact (backup)
+      # ☁️ Guardar artifact
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: aikora-sora-apk
           path: aikora-sora.apk
           retention-days: 30
 
+      # 🚀 Crear Release automático
       - name: Create GitHub Release
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         uses: softprops/action-gh-release@v2
@@ -65,15 +74,12 @@ jobs:
           tag_name: v1.0.${{ github.run_number }}
           name: "Aikōra Sora v1.0.${{ github.run_number }}"
           body: |
-            🎉 **Nueva versión de Aikōra Sora**
-            
-            Release automático generado desde commit `${{ github.sha }}`
-            
-            ### 📦 Descargas
-            - Android: `aikora-sora.apk`
-            
-            ### ✨ Últimos cambios
-            Ver commits recientes en el repositorio.
+            🎉 Nueva versión de Aikōra Sora
+
+            Release automático generado desde commit ${{ github.sha }}
+
+            📦 Descargas:
+            - Android APK incluido
           files: aikora-sora.apk
           make_latest: true
         env:
