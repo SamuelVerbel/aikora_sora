@@ -48,4 +48,34 @@ class ReservationsService {
         .update({'status': 'cancelled'})
         .eq('id', reservationId);
   }
+
+  Future<Map<String, dynamic>> generateAIPlan(
+    Map<String, dynamic> args,
+  ) async {
+    try {
+      final response = await _supabase.functions.invoke(
+        'generate-trip-plan',
+        body: {
+          'destination_name': args['destination_name'],
+          'city': args['city'],
+          'country': args['country'],
+          'budget': args['budget'],
+          'type': args['type'],
+          'travelers': args['travelers'],
+          'activities': args['activities'],
+          'start_date': args['start_date']?.toString(),
+          'end_date': args['end_date']?.toString(),
+        },
+      );
+
+      if (response.data == null) {
+        throw Exception('Respuesta IA vacía');
+      }
+
+      return Map<String, dynamic>.from(response.data);
+    } catch (e) {
+      print('Error llamando IA: $e');
+      rethrow;
+    }
+  }
 }

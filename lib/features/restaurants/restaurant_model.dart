@@ -2,14 +2,18 @@
 /// Se construye a partir del JSON que devuelve Supabase.
 class Restaurant {
   final String id;
-  final String destinationId; // ID del destino al que pertenece
+  final String destinationId;
   final String name;
-  final String cuisine;       // Tipo de cocina: italiana, colombiana, etc.
-  final String priceRange;    // 'low' | 'mid' | 'high'
+  final String cuisine;
+  final String priceRange;
   final double rating;
   final String imageUrl;
   final double latitude;
   final double longitude;
+
+  // ⭐ NUEVO (Google Places)
+  final bool isExternal; // viene de Google o DB
+  final String? address;
 
   Restaurant({
     required this.id,
@@ -21,6 +25,8 @@ class Restaurant {
     required this.imageUrl,
     required this.latitude,
     required this.longitude,
+    this.isExternal = false,
+    this.address,
   });
 
   /// Convierte el Map de Supabase en un objeto Restaurant.
@@ -36,6 +42,8 @@ class Restaurant {
       imageUrl: json['image_url'] ?? '',
       latitude: (json['latitude'] ?? 0).toDouble(),
       longitude: (json['longitude'] ?? 0).toDouble(),
+      isExternal: false,
+      address: json['address'],
     );
   }
 }

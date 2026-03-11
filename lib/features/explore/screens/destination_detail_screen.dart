@@ -6,6 +6,8 @@ import '../models/destination_model.dart';
 import 'gallery_fullscreen_screen.dart';
 import '../../reservations/create_reservation_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../ai/user_behavior_service.dart';
+
 
 class DestinationDetailScreen extends StatefulWidget {
   final Destination destination;
@@ -27,6 +29,17 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
   @override
   void initState() {
     super.initState();
+
+    final behavior = UserBehaviorService();
+
+    behavior.registerDestinationView(widget.destination.id);
+
+    // 🧠 IA aprende automáticamente
+    behavior.learnTravelPreference(
+      widget.destination.id,
+      widget.destination.category,
+    );
+
     _pageController = PageController();
   }
 
@@ -89,26 +102,25 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
                         }
                       },
                       child: imageUrl.isNotEmpty
-    ? CachedNetworkImage(
-        imageUrl: imageUrl,
-        fit: BoxFit.cover,
-        width: double.infinity,
-        placeholder: (context, url) => Container(
-          color: Colors.grey[200],
-          child: const Center(
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-        ),
-        errorWidget: (context, url, error) => Container(
-          color: Colors.grey[300],
-          child: const Icon(Icons.image_not_supported, size: 60),
-        ),
-      )
-    : Container(
-        color: Colors.grey[300],
-        child: const Icon(Icons.image_not_supported, size: 60),
-      ),
-
+                      ? CachedNetworkImage(
+                        imageUrl: imageUrl,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        placeholder: (context, url) => Container(
+                          color: Colors.grey[200],
+                          child: const Center(
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
+                        errorWidget: (context, url, error) => Container(
+                          color: Colors.grey[300],
+                          child: const Icon(Icons.image_not_supported, size: 60),
+                        ),
+                      )
+                    : Container(
+                        color: Colors.grey[300],
+                        child: const Icon(Icons.image_not_supported, size: 60),
+                      ),
                     );
                   },
                 ),
@@ -413,6 +425,8 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
                     arguments: {
                       'destinationId': dest.id,
                       'destinationName': dest.title,
+                      'lat': dest.latitude != 0 ? dest.latitude : null,
+                      'lng': dest.longitude != 0 ? dest.longitude : null,
                     },
                   );
                 },

@@ -1,51 +1,99 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/destination_model.dart';
 
-/// Repositorio de Destinos.
-/// Se encarga EXCLUSIVAMENTE de comunicarse con la base de datos (Supabase).
-/// Así separamos la lógica de negocio/datos de las pantallas (UI).
+/// Repositorio encargado de manejar todas las consultas
+/// relacionadas con destinos turísticos.
+///
+/// Sigue el patrón **Repository Pattern** para separar
+/// la lógica de acceso a datos de la interfaz de usuario.
 class DestinationsRepository {
   final SupabaseClient _supabase = Supabase.instance.client;
 
-  /// Obtiene todos los destinos disponibles en la tabla `destinations`.
-  /// Se usa principalmente en la pantalla "ExploreScreen" inicial.
-  Future<List<Destination>> getDestinations() async {
+  /// Cache local para evitar múltiples llamadas innecesarias a la base de datos.
+  List<Destination>? _cachedDestinations;
+
+  /// Obtiene todos los destinos disponibles.
+  /// Si ya fueron cargados previamente, devuelve la versión en caché.
+  Future<List<Destination>> getDestinations({bool forceRefresh = false}) async {
     try {
+      if (!forceRefresh && _cachedDestinations != null) {
+        return _cachedDestinations!;
+      }
+
       final response = await _supabase
           .from('destinations')
           .select()
-          .order('created_at'); // Ordenados del más antiguo al más nuevo
+          .order('rating', ascending: false);
 
-      // Transformamos la respuesta cruda de Supabase (List) a una lista
-      // de objetos Destination usando el método fromJson() de nuestro modelo.
-      return (response as List)
+      final destinations = (response as List)
           .map((data) => Destination.fromJson(data))
           .toList();
+
+      _cachedDestinations = destinations;
+
+      return destinations;
     } catch (e) {
-      print('Error cargando destinos: $e');
-      // En caso de error (sin internet, BD caída), devolvemos lista vacía para que la app no haga crash.
+      debugPrint('Error cargando destinos: $e');
       return [];
     }
   }
 
-  /// Busca destinos por coincidencia en nombre, país o ciudad.
-  /// (Nota: Aunque esta función existe, en "ExploreScreen" actualmente estamos
-  /// haciendo el filtrado localmente en memoria para evitar tantas llamadas a la BD).
+  /// Obtiene un destino específico por su ID.
+  Future<Destination?> getDestinationById(String id) async {
+    try {
+      final response = await _supabase
+          .from('destinations')
+          .select()
+          .eq('id', id)
+          .single();
+
+      return Destination.fromJson(response);
+    } catch (e) {
+      debugPrint('Error obteniendo destino: $e');
+      return null;
+    }
+  }
+
+  /// Busca destinos por nombre, país o ciudad.
   Future<List<Destination>> searchDestinations(String query) async {
     try {
       final response = await _supabase
           .from('destinations')
           .select()
-          // "ilike" significa búsqueda "case-insensitive" (no importa mayúsculas).
-          // El "%" es un comodín (busca la palabra en cualquier parte del texto).
-          .or('name.ilike.%$query%,country.ilike.%$query%,city.ilike.%$query%');
+          .or('name.ilike.%$query%,country.ilike.%$query%,city.ilike.%$query%')
+          .order('rating', ascending: false);
 
       return (response as List)
           .map((data) => Destination.fromJson(data))
           .toList();
     } catch (e) {
-      print('Error buscando destinos: $e');
+      debugPrint('Error buscando destinos: $e');
       return [];
     }
+  }
+
+  /// Obtiene destinos filtrados por categoría.
+  Future<List<Destination>> getDestinationsByCategory(String category) async {
+    try {
+      final response = await _supabase
+          .from('destinations')
+          .select()
+          .eq('category', category)
+          .order('rating', ascending: false);
+
+      return (response as List)
+          .map((data) => Destination.fromJson(data))
+          .toList();
+    } catch (e) {
+      debugPrint('Error cargando destinos por categoría: $e');
+      return [];
+    }
+  }
+
+  /// Limpia el cache en memoria.
+  /// Se puede usar si el usuario actualiza la información.
+  void clearCache() {
+    _cachedDestinations = null;
   }
 }

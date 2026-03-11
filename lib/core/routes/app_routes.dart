@@ -50,6 +50,14 @@ class AppRoutes {
 
   /// Genera la ruta según settings.name.
   /// Ventaja: puedes interceptar argumentos, validar tipos y evitar crashes.
+  /// 
+  static Route<dynamic> _errorRoute() {
+    return MaterialPageRoute(
+      builder: (_) => const Scaffold(
+        body: Center(child: Text('Error de navegación')),
+      ),
+    );
+  }
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
       
@@ -113,11 +121,13 @@ class AppRoutes {
       // ── DESTINATION DETAIL ──
       case destinationDetail:
       // Este sí es obligatorio: si no viene, el cast rompe.
-        final destination = settings.arguments as Destination;
+        final args = settings.arguments;
+        if (args is! Destination) {
+          return _errorRoute();
+        }
+
         return MaterialPageRoute(
-          builder: (_) => DestinationDetailScreen(
-            destination: destination,
-          ),
+          builder: (_) => DestinationDetailScreen(destination: args),
         );
 
       // ── PLAN RESULT ──

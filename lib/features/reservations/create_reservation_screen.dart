@@ -3,8 +3,6 @@ import '../../../core/theme/app_colors.dart';
 import '../explore/models/destination_model.dart';
 import 'reservations_service.dart';
 
-/// Pantalla/modal para crear una nueva reserva sobre un destino.
-/// Se abre como bottomSheet desde destination_detail_screen.
 class CreateReservationScreen extends StatefulWidget {
   final Destination destination;
 
@@ -18,8 +16,7 @@ class CreateReservationScreen extends StatefulWidget {
       _CreateReservationScreenState();
 }
 
-class _CreateReservationScreenState
-    extends State<CreateReservationScreen> {
+class _CreateReservationScreenState extends State<CreateReservationScreen> {
   final _service = ReservationsService();
   final _notesController = TextEditingController();
 
@@ -34,7 +31,6 @@ class _CreateReservationScreenState
     super.dispose();
   }
 
-  // ── Selector de fecha ────────────────────────────────────────────
   Future<void> _pickDate({required bool isStart}) async {
     final now = DateTime.now();
     final initial = isStart
@@ -59,7 +55,6 @@ class _CreateReservationScreenState
     setState(() {
       if (isStart) {
         _startDate = picked;
-        // Si la fecha de fin es anterior a la nueva de inicio, la resetea
         if (_endDate != null && _endDate!.isBefore(picked)) {
           _endDate = null;
         }
@@ -69,19 +64,16 @@ class _CreateReservationScreenState
     });
   }
 
-  // ── Calcula noches entre las dos fechas ──────────────────────────
   int get _nights {
     if (_startDate == null || _endDate == null) return 0;
     return _endDate!.difference(_startDate!).inDays;
   }
 
-  // ── Precio estimado total ────────────────────────────────────────
   double get _estimatedTotal {
     if (widget.destination.priceMin <= 0) return 0;
     return widget.destination.priceMin * _nights * _travelers;
   }
 
-  // ── Validación y envío ───────────────────────────────────────────
   Future<void> _submit() async {
     if (_startDate == null || _endDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -115,36 +107,35 @@ class _CreateReservationScreenState
             : _notesController.text.trim(),
       );
 
-      if (mounted) {
-        Navigator.pop(context, true); // true = creada con éxito
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(children: [
-              Icon(Icons.check_circle, color: Colors.white, size: 18),
-              SizedBox(width: 8),
-              Text('¡Reserva creada exitosamente!'),
-            ]),
-            backgroundColor: AppColors.accent,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
-          ),
-        );
-      }
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Row(children: [
+            Icon(Icons.check_circle, color: Colors.white, size: 18),
+            SizedBox(width: 8),
+            Text('¡Reserva creada exitosamente!'),
+          ]),
+          backgroundColor: AppColors.accent,
+          behavior: SnackBarBehavior.floating,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+
+      Navigator.pop(context, true);
     } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al crear reserva: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al crear reserva: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
-  // ── Formato legible de fecha ─────────────────────────────────────
   String _formatDate(DateTime date) {
     const months = [
       'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
@@ -171,11 +162,10 @@ class _CreateReservationScreenState
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-
-            // Handle visual del bottomSheet
             Center(
               child: Container(
-                width: 40, height: 4,
+                width: 40,
+                height: 4,
                 decoration: BoxDecoration(
                   color: Colors.grey[300],
                   borderRadius: BorderRadius.circular(2),
@@ -183,8 +173,6 @@ class _CreateReservationScreenState
               ),
             ),
             const SizedBox(height: 16),
-
-            // Título
             Text(
               'Reservar en ${widget.destination.title}',
               style: const TextStyle(
@@ -196,14 +184,11 @@ class _CreateReservationScreenState
             ),
             const SizedBox(height: 24),
 
-            // ── Fechas ──────────────────────────────────────────────
             const Text('Fechas del viaje',
-                style: TextStyle(
-                    fontSize: 15, fontWeight: FontWeight.w600)),
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
             const SizedBox(height: 10),
             Row(
               children: [
-                // Fecha de entrada
                 Expanded(
                   child: _DateButton(
                     label: 'Entrada',
@@ -215,21 +200,16 @@ class _CreateReservationScreenState
                   ),
                 ),
                 const SizedBox(width: 12),
-                // Fecha de salida
                 Expanded(
                   child: _DateButton(
                     label: 'Salida',
-                    date: _endDate != null
-                        ? _formatDate(_endDate!)
-                        : null,
+                    date: _endDate != null ? _formatDate(_endDate!) : null,
                     icon: Icons.flight_takeoff_outlined,
                     onTap: () => _pickDate(isStart: false),
                   ),
                 ),
               ],
             ),
-
-            // Resumen de noches
             if (_nights > 0)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
@@ -247,17 +227,13 @@ class _CreateReservationScreenState
                   ],
                 ),
               ),
-
             const SizedBox(height: 20),
-
-            // ── Viajeros ────────────────────────────────────────────
             const Text('Viajeros',
-                style: TextStyle(
-                    fontSize: 15, fontWeight: FontWeight.w600)),
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
             const SizedBox(height: 10),
             Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 16, vertical: 4),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               decoration: BoxDecoration(
                 border: Border.all(color: Colors.grey.shade300),
                 borderRadius: BorderRadius.circular(12),
@@ -297,18 +273,22 @@ class _CreateReservationScreenState
                 ],
               ),
             ),
-
             const SizedBox(height: 20),
-
-            // ── Notas opcionales ────────────────────────────────────
             const Text('Notas (opcional)',
-                style: TextStyle(
-                    fontSize: 15, fontWeight: FontWeight.w600)),
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
             const SizedBox(height: 10),
             TextField(
               controller: _notesController,
               maxLines: 3,
               maxLength: 200,
+              buildCounter: (context,
+                      {required currentLength, maxLength, required isFocused}) =>
+                  Text('$currentLength / $maxLength',
+                      style: TextStyle(
+                          color: currentLength > maxLength!
+                              ? Colors.red
+                              : Colors.grey[500],
+                          fontSize: 12)),
               decoration: InputDecoration(
                 hintText: 'Solicitudes especiales, preferencias...',
                 border: OutlineInputBorder(
@@ -316,8 +296,6 @@ class _CreateReservationScreenState
                 contentPadding: const EdgeInsets.all(12),
               ),
             ),
-
-            // ── Precio estimado ─────────────────────────────────────
             if (_estimatedTotal > 0)
               Container(
                 padding: const EdgeInsets.all(14),
@@ -342,10 +320,7 @@ class _CreateReservationScreenState
                   ],
                 ),
               ),
-
             const SizedBox(height: 8),
-
-            // ── Botón confirmar ─────────────────────────────────────
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -379,7 +354,6 @@ class _CreateReservationScreenState
   }
 }
 
-// ── Widget auxiliar para los botones de fecha ──────────────────────
 class _DateButton extends StatelessWidget {
   final String label;
   final String? date;
@@ -401,9 +375,7 @@ class _DateButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         decoration: BoxDecoration(
-          color: hasDate
-              ? AppColors.accent.withOpacity(0.07)
-              : Colors.grey[50],
+          color: hasDate ? AppColors.accent.withOpacity(0.07) : Colors.grey[50],
           border: Border.all(
             color: hasDate ? AppColors.accent : Colors.grey.shade300,
           ),
@@ -415,16 +387,12 @@ class _DateButton extends StatelessWidget {
             Row(children: [
               Icon(icon,
                   size: 16,
-                  color:
-                      hasDate ? AppColors.accent : Colors.grey[400]),
+                  color: hasDate ? AppColors.accent : Colors.grey[400]),
               const SizedBox(width: 6),
               Text(label,
                   style: TextStyle(
                       fontSize: 12,
-                      color: hasDate
-                          ?
-                    AppColors.accent
-                          : Colors.grey[500],
+                      color: hasDate ? AppColors.accent : Colors.grey[500],
                       fontWeight: FontWeight.w600)),
             ]),
             const SizedBox(height: 4),
@@ -441,4 +409,3 @@ class _DateButton extends StatelessWidget {
     );
   }
 }
-

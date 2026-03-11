@@ -27,6 +27,18 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      # 🔐 PASO CLAVE: Crear el archivo env.dart usando los Secrets de GitHub
+      - name: Create Env Config
+        run: |
+          mkdir -p lib/config
+          cat <<EOF > lib/config/env.dart
+          class Env {
+            static const String supabaseUrl = '${{ secrets.SUPABASE_URL }}';
+            static const String supabaseAnonKey = '${{ secrets.SUPABASE_ANON_KEY }}';
+            static const String googleMapsApiKey = '${{ secrets.GOOGLE_MAPS_API_KEY }}';
+          }
+          EOF
+
       - name: Analyze code
         run: flutter analyze --no-fatal-infos
         continue-on-error: true

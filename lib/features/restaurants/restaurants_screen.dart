@@ -3,6 +3,7 @@ import '../../../core/theme/app_colors.dart';
 import 'restaurant_model.dart';
 import 'restaurants_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '/core/utils/map_launcher_service.dart';
 
 /// Pantalla de restaurantes.
 /// Tiene dos modos:
@@ -25,39 +26,51 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
   String? _selectedCuisine;       // Filtro activo de tipo de cocina
   String? _destinationId;         // Si viene de un destino específico
   String? _destinationName;       // Para mostrar en el AppBar
+  double? _lat;
+  double? _lng;
 
   @override
   void initState() {
     super.initState();
-    // addPostFrameCallback asegura que el widget ya esté montado
-    // antes de leer los argumentos de la ruta
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final args = ModalRoute.of(context)?.settings.arguments;
-      if (args is Map) {
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map?;
+
+      if (args != null) {
         _destinationId = args['destinationId'];
         _destinationName = args['destinationName'];
+        _lat = args['lat'];
+        _lng = args['lng'];
       }
+
       _loadRestaurants();
     });
   }
 
-  /// Carga restaurantes desde Supabase según el modo activo.
+  // 1. Actualiza la carga de datos para usar Google Places si hay coordenadas
   Future<void> _loadRestaurants() async {
     setState(() => _isLoading = true);
 
-    // Si hay destinationId cargamos solo los de ese destino,
-    // si no, cargamos todos
-    final data = _destinationId != null
-        ? await _service.getByDestination(_destinationId!)
-        : await _service.getAll();
+    List<Restaurant> data;
 
-    if (mounted) {
-      setState(() {
-        _all = data;
-        _applyFilters(); // Aplica filtros iniciales
-        _isLoading = false;
-      });
+    if (_lat != null && _lng != null) {
+      data = await _service.getRealTimeRestaurants(
+        lat: _lat!,
+        lng: _lng!,
+        destinationId: _destinationId ?? 'unknown',
+      );
+    } else {
+      data = await _service.getAll();
     }
+
+    if (!mounted) return;
+
+    setState(() {
+      _all = data;
+      _applyFilters();
+      _isLoading = false;
+    });
   }
 
   /// Motor de filtrado: combina búsqueda de texto + tipo de cocina.
@@ -246,23 +259,19 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
    ========================================================================= */
 
 /// Tarjeta horizontal para mostrar la info de un restaurante.
-/// Imagen a la izquierda, datos a la derecha.
 class _RestaurantCard extends StatelessWidget {
   final Restaurant restaurant;
   const _RestaurantCard({required this.restaurant});
 
-  /// Convierte el valor interno del precio en símbolos visuales.
-  /// 'low' → $   'mid' → $$   'high' → $$$
   String get _priceLabel {
     switch (restaurant.priceRange) {
-      case 'low':  return '\$';
-      case 'mid':  return '\$\$';
+      case 'low': return '\$';
+      case 'mid': return '\$\$';
       case 'high': return '\$\$\$';
-      default:     return restaurant.priceRange;
+      default: return restaurant.priceRange;
     }
   }
 
-  /// Widget placeholder para mostrar cuando falta la imagen.
   Widget _placeholder() {
     return Container(
       width: 110,
@@ -270,6 +279,15 @@ class _RestaurantCard extends StatelessWidget {
       color: Colors.grey[300],
       child: Icon(Icons.restaurant_outlined,
           color: Colors.grey[600], size: 40),
+    );
+  }
+
+  Future<void> _openMap() async {
+    if (restaurant.latitude == 0 || restaurant.longitude == 0) return;
+
+    await MapLauncherService.openGoogleMaps(
+      restaurant.latitude,
+      restaurant.longitude,
     );
   }
 
@@ -283,38 +301,36 @@ class _RestaurantCard extends StatelessWidget {
       child: Row(
         children: [
 
-          // ── Imagen del restaurante ────────────────────────────────
+          // Imagen
           ClipRRect(
-            borderRadius: const BorderRadius.horizontal(
-                left: Radius.circular(16)),
+            borderRadius:
+                const BorderRadius.horizontal(left: Radius.circular(16)),
             child: restaurant.imageUrl.isNotEmpty
                 ? CachedNetworkImage(
                     imageUrl: restaurant.imageUrl,
                     width: 110,
-                    height: 110,
+                    height: 130,
                     fit: BoxFit.cover,
-                    placeholder: (context, url) => Container(
+                    placeholder: (_, __) => Container(
                       width: 110,
-                      height: 110,
+                      height: 130,
                       color: Colors.grey[200],
                       child: const Center(
                         child: CircularProgressIndicator(strokeWidth: 2),
                       ),
                     ),
-                    errorWidget: (context, url, error) => _placeholder(),
+                    errorWidget: (_, __, ___) => _placeholder(),
                   )
                 : _placeholder(),
           ),
 
-
-          // ── Información del restaurante ───────────────────────────
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Nombre
+
                   Text(
                     restaurant.name,
                     style: const TextStyle(
@@ -322,9 +338,9 @@ class _RestaurantCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
+
                   const SizedBox(height: 4),
 
-                  // Tipo de cocina
                   Row(children: [
                     const Icon(Icons.restaurant_menu_outlined,
                         size: 13, color: Colors.grey),
@@ -333,13 +349,12 @@ class _RestaurantCard extends StatelessWidget {
                         style: TextStyle(
                             color: Colors.grey[600], fontSize: 13)),
                   ]),
+
                   const SizedBox(height: 8),
 
-                                    // Rating y rango de precio
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Estrellas y número
                       Row(children: [
                         const Icon(Icons.star,
                             color: Colors.amber, size: 15),
@@ -351,8 +366,6 @@ class _RestaurantCard extends StatelessWidget {
                               fontWeight: FontWeight.w600),
                         ),
                       ]),
-
-                      // Badge de precio ($, $$, $$$)
                       Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 3),
@@ -369,6 +382,21 @@ class _RestaurantCard extends StatelessWidget {
                         ),
                       ),
                     ],
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  // 🔥 NUEVO BOTÓN MAPA
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
+                      icon: const Icon(Icons.map_outlined, size: 18),
+                      label: const Text('Ver en mapa'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppColors.accent,
+                      ),
+                      onPressed: _openMap,
+                    ),
                   ),
                 ],
               ),
