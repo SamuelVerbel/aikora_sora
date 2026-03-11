@@ -8,17 +8,17 @@ on:
 
 jobs:
   build:
-    name: Build & Release APK
+    name: Build APK + Web
     runs-on: ubuntu-latest
     permissions:
       contents: write
 
     steps:
-      # 📥 Obtener código
+      # 📥 Checkout
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 🐦 Instalar Flutter
+      # 🐦 Setup Flutter
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -26,11 +26,11 @@ jobs:
           channel: stable
           cache: true
 
-      # 📦 Dependencias
+      # 📦 Dependencies
       - name: Install dependencies
         run: flutter pub get
 
-      # 🔐 Crear env.dart desde GitHub Secrets
+      # 🔐 Create env.dart
       - name: Create env.dart
         run: |
           mkdir -p lib/core/config
@@ -42,7 +42,12 @@ jobs:
           }
           EOF
 
-      # 🔎 Análisis
+      # 🌐 Inject Google Maps API Key into Web
+      - name: Inject Google Maps API Key
+        run: |
+          sed -i 's|YOUR_GOOGLE_MAPS_KEY|${{ secrets.GOOGLE_MAPS_API_KEY }}|g' web/index.html
+
+      # 🔎 Analyze
       - name: Analyze code
         run: flutter analyze --no-fatal-infos
         continue-on-error: true
@@ -52,15 +57,19 @@ jobs:
         run: flutter test
         continue-on-error: true
 
+      # 🌐 Build Web
+      - name: Build Web
+        run: flutter build web --release
+
       # 📱 Build APK
-      - name: Build APK (release)
+      - name: Build APK
         run: flutter build apk --release
 
-      # 🏷 Renombrar APK
+      # 🏷 Rename APK
       - name: Rename APK
         run: mv build/app/outputs/flutter-apk/app-release.apk aikora-sora.apk
 
-      # ☁️ Guardar artifact
+      # ☁️ Upload artifact
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
@@ -68,7 +77,7 @@ jobs:
           path: aikora-sora.apk
           retention-days: 30
 
-      # 🚀 Crear Release automático
+      # 🚀 GitHub Release
       - name: Create GitHub Release
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         uses: softprops/action-gh-release@v2
