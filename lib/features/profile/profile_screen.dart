@@ -64,11 +64,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (mounted) {
       setState(() {
         _profile = profile;
-        likesNature = prefs['nature'];
-        likesCulture = prefs['culture'];
-        likesFood = prefs['food'];
-        selectedLanguage = prefs['language'];
-        budget = prefs['budget'];
+        likesNature = prefs['nature'] ?? true;
+        likesCulture = prefs['culture'] ?? false;
+        likesFood = prefs['food'] ?? true;
+        likesAdventure = prefs['adventure'] ?? false;
+        likesBeach = prefs['beach'] ?? false;
+        selectedLanguage = prefs['language'] ?? 'es';
+        budget = (prefs['budget'] ?? 500).toDouble();
         _isLoadingProfile = false;
       });
     }
@@ -77,12 +79,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _savePreferences() async {
     setState(() => _isSavingPrefs = true);
     await PreferencesService.savePreferences(
-      nature: likesNature,
-      culture: likesCulture,
-      food: likesFood,
-      language: selectedLanguage,
-      budget: budget,
-    );
+    nature: likesNature,
+    culture: likesCulture,
+    food: likesFood,
+    adventure: likesAdventure,
+    beach: likesBeach,
+    language: selectedLanguage,
+    budget: budget,
+  );
     if (mounted) {
       setState(() => _isSavingPrefs = false);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -319,6 +323,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  String _buildTravelStyle() {
+    if (likesAdventure) return "Explorador aventurero";
+    if (likesFood) return "Viajero gastronómico";
+    if (likesCulture) return "Amante cultural";
+    if (likesBeach) return "Buscador de relax";
+    return "Viajero equilibrado";
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -511,6 +523,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ]),
 
                         const SizedBox(height: 24),
+
+                        _SectionTitle(title: 'Tu estilo de viaje'),
+                        _SettingsCard(children: [
+                          ListTile(
+                            leading: Icon(Icons.auto_awesome, color: AppColors.accent),
+                            title: Text(_buildTravelStyle()),
+                            subtitle: Text(
+                              'Basado en tus preferencias y actividad reciente',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                          ),
+                        ]),
 
                         // 🎯 Preferencias de viaje
                         _SectionTitle(title: 'Preferencias de viaje'),
