@@ -6,6 +6,8 @@ import '../models/destination_model.dart';
 import 'gallery_fullscreen_screen.dart';
 import '../../reservations/create_reservation_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../ai/user_behavior_service.dart';
+
 
 class DestinationDetailScreen extends StatefulWidget {
   final Destination destination;
@@ -27,6 +29,17 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
   @override
   void initState() {
     super.initState();
+
+    final behavior = UserBehaviorService();
+
+    behavior.registerDestinationView(widget.destination.id);
+
+    // 🧠 IA aprende automáticamente
+    behavior.learnTravelPreference(
+      widget.destination.id,
+      widget.destination.category,
+    );
+
     _pageController = PageController();
   }
 

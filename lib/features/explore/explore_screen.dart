@@ -10,6 +10,7 @@ import '../../core/routes/app_routes.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'dart:async';
 import '../../features/auth/services/preferences_service.dart';
+import '../ai/recommendation_engine.dart';
 
 /// Pantalla Explorar.
 /// Muestra TODOS los destinos y permite buscar por texto,
@@ -30,6 +31,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
   
   // Lista que realmente se muestra en pantalla (resultado de los filtros)
   List<Destination> _filtered = [];
+
+  List<Destination> _recommendedDestinations = [];
+
+  String _recommendationTitle = "✨ Recomendado para ti";
   
   bool _isLoading = true; // Controla el spinner inicial
   String _query = '';     // Texto actual de la barra de búsqueda
@@ -74,12 +79,35 @@ class _ExploreScreenState extends State<ExploreScreen> {
   /// Trae la lista completa de destinos desde Supabase 1 sola vez.
   Future<void> _loadDestinations() async {
     setState(() => _isLoading = true);
+
     final data = await _repository.getDestinations();
-    
+
+    final engine = RecommendationEngine();
+
+    // ranking general (lo que ya usabas)
+    final ranked = await engine.rankDestinations(data);
+
+    // ⭐ nuevos recomendados
+    final recommended =
+        await engine.getTopRecommendations(data);
+
+    final preferredType =
+        await engine.getUserPreferredCategory();
+
     if (mounted) {
       setState(() {
-        _allDestinations = data;
-        _applyFilters(); // Aplica filtros iniciales (si venía con categoría)
+        _allDestinations = ranked;
+        _recommendedDestinations = recommended;
+
+        // 🧠 título dinámico IA
+        if (preferredType != null) {
+          _recommendationTitle =
+              "✨ Porque te gustan los destinos $preferredType";
+        } else {
+          _recommendationTitle = "✨ Recomendado para ti";
+        }
+
+        _applyFilters();
         _isLoading = false;
       });
     }
@@ -322,6 +350,44 @@ class _ExploreScreenState extends State<ExploreScreen> {
               ],
             ),
           ),
+
+          // ⭐ SECCIÓN IA RECOMENDADOS
+          if (_recommendedDestinations.isNotEmpty)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 12, 16, 8),
+                  child: Text(
+                    "✨ Recomendado para ti",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  height: 260,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: _recommendedDestinations.length,
+                    itemBuilder: (context, index) {
+                      final destination =
+                          _recommendedDestinations[index];
+
+                      return SizedBox(
+                        width: 260,
+                        child: DestinationCard(
+                          destination: destination,
+                          userPosition: _userPosition,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
 
           // 4. Lista de resultados (con soporte de scroll)
           Expanded(
