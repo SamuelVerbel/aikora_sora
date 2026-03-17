@@ -97,12 +97,13 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                           ),
                         ),
                         const SizedBox(height: 14),
-                        const Text(
+                        Text(
                           'Planifica viajes inteligentes\ncon ayuda de IA',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            fontSize: 17,
-                            color: Colors.white60,
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.onSurface,
                             height: 1.6, //interlineado para mejor legibilidad en multilinea
                           ),
                         ),

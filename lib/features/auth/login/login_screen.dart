@@ -86,57 +86,72 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0B1C2D),
+      // ✅ Usamos el color del tema en lugar de uno fijo
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
-          // SingleChildScrollView evita overflow cuando abre el teclado
           child: Column(
             children: [
-              // ── Header oscuro con logo ────────────────────────────────
+              // ── Header adaptable ────────────────────────────────
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 40),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
+                  // ✅ Gradiente que se adapta: oscuro en Dark Mode, azul suave en Light Mode
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [Color(0xFF0B1C2D), Color(0xFF0F2744)],
+                    colors: isDark 
+                      ? [const Color(0xFF0B1C2D), const Color(0xFF0F2744)]
+                      : [theme.primaryColor.withOpacity(0.8), theme.primaryColor],
                   ),
                 ),
                 child: Column(
                   children: [
-                    // Botón volver (pop cierra el login y regresa al Welcome)
+                    // Botón volver
                     Align(
                       alignment: Alignment.centerLeft,
                       child: Padding(
                         padding: const EdgeInsets.only(left: 16, bottom: 16),
                         child: IconButton(
                           onPressed: () => Navigator.pop(context),
-                          icon: const Icon(Icons.arrow_back_ios,
-                              color: Colors.white70),
+                          // ✅ Color blanco siempre para que resalte sobre el gradiente
+                          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
                         ),
                       ),
                     ),
+                    
                     // ✅ Logo real
                     Image.asset(
                       'assets/logo/app_icon.png',
                       height: 80,
                       width: 80,
+                      // Si el logo es negro y no se ve en modo oscuro, puedes usar un colorFilter
                     ),
+                    
                     const SizedBox(height: 16),
+                    
                     const Text(
                       'Bienvenido de vuelta',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: Colors.white, // Se mantiene blanco por estar sobre el gradiente
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
+                    
                     const SizedBox(height: 6),
+                    
                     const Text(
                       'Inicia sesión para continuar',
-                      style: TextStyle(color: Colors.white54, fontSize: 14),
+                      style: TextStyle(
+                        color: Colors.white70, 
+                        fontSize: 14
+                      ),
                     ),
                   ],
                 ),

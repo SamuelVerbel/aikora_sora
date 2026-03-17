@@ -26,35 +26,26 @@ class _MainNavigationScreenState
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context); // 👈 Añadir esto
+
     return Scaffold(
       body: _screens[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
+        // ✅ Usa el color de superficie del tema
+        backgroundColor: theme.colorScheme.surface, 
         selectedItemColor: AppColors.accent,
-        unselectedItemColor: Colors.grey,
+        unselectedItemColor: theme.brightness == Brightness.dark 
+            ? Colors.grey[500] 
+            : Colors.grey[600],
         type: BottomNavigationBarType.fixed,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
+        elevation: 10, // Un poco de sombra para separar del body
+        onTap: (index) => setState(() => _currentIndex = index),
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            label: "Inicio",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.explore_outlined),
-            label: "Explorar",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.auto_awesome_outlined),
-            label: "Plan",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            label: "Perfil",
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: "Inicio"),
+          BottomNavigationBarItem(icon: Icon(Icons.explore_outlined), activeIcon: Icon(Icons.explore), label: "Explorar"),
+          BottomNavigationBarItem(icon: Icon(Icons.auto_awesome_outlined), activeIcon: Icon(Icons.auto_awesome), label: "Plan"),
+          BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: "Perfil"),
         ],
       ),
     );

@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../core/config/env.example.dart'; // Importamos tu Env seguro
+import '../../core/config/env.dart'; // Importamos tu Env seguro
 import 'restaurant_model.dart';
 
 class RestaurantsService {
