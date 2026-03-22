@@ -606,6 +606,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         SettingsCard(
                           children: [
                             ActionTile(
+                              icon: Icons.admin_panel_settings_outlined,
+                              label: 'Panel de administración',
+                              color: Colors.purple,
+                              onTap: () => Navigator.pushNamed(context, AppRoutes.admin),
+                            ),
+                            const SettingsDivider(),
+                            ActionTile(
                               icon: Icons.person_outline,
                               label: 'Editar perfil',
                               color: AppColors.accent,

@@ -44,6 +44,7 @@ jobs:
             static const supabaseUrl = "${{ secrets.SUPABASE_URL }}";
             static const supabaseAnonKey = "${{ secrets.SUPABASE_ANON_KEY }}";
             static const googleMapsApiKey = "${{ secrets.GOOGLE_MAPS_API_KEY }}";
+            static const groqApiKey = "${{ secrets.GROQ_API_KEY }}";
           }
           EOF
 
