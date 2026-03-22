@@ -11,7 +11,7 @@
   <meta name="google-signin-client_id"
         content="391506860870-4nunkh8jd4uv08trv0i3kkkjvadh9pv0.apps.googleusercontent.com">
 
-  <!-- ✅ Google Maps (API KEY INJECTED BY CI) -->
+  <!-- Google Maps (API KEY INJECTED BY CI) -->
   <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_KEY&libraries=places"></script>
 
   <!-- iOS / PWA -->
@@ -25,6 +25,16 @@
 </head>
 
 <body>
+  <!-- Supabase OAuth callback: captura el token cuando Google redirige de vuelta -->
+  <script>
+    if (window.location.hash && window.location.hash.includes('access_token')) {
+      window.localStorage.setItem(
+        'supabase_oauth_callback',
+        window.location.href
+      );
+    }
+  </script>
+
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
