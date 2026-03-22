@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/routes/app_routes.dart';
 import '../auth/services/profile_service.dart';
 import '../explore/models/destination_model.dart';
-import '../../core/widgets/section_title.dart'; // Asegúrate de tener este import
+import '../explore/data/destinations_repository.dart';
+import '../../core/widgets/section_title.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,17 +17,20 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final _supabase = Supabase.instance.client;
+  final _repository = DestinationsRepository();
+
   String userName = 'Viajero';
   String? userAvatar;
   bool isLoading = true;
   List<Destination> _featured = [];
-  bool _loadingDestinations = true;
 
   final List<Map<String, dynamic>> _categories = [
-    {'label': 'Playa', 'icon': Icons.beach_access_outlined, 'tag': 'playa'},
-    {'label': 'Cultura', 'icon': Icons.museum_outlined, 'tag': 'cultura'},
-    {'label': 'Aventura', 'icon': Icons.terrain_outlined, 'tag': 'aventura'},
-    {'label': 'Gastronomía', 'icon': Icons.restaurant_outlined, 'tag': 'gastronomia'},
+    {'label': 'Playa',       'icon': Icons.beach_access_outlined,  'tag': 'playa'},
+    {'label': 'Cultura',     'icon': Icons.museum_outlined,         'tag': 'cultura'},
+    {'label': 'Aventura',    'icon': Icons.terrain_outlined,        'tag': 'aventura'},
+    {'label': 'Gastronomía', 'icon': Icons.restaurant_outlined,     'tag': 'gastronomia'},
+    {'label': 'Montaña',     'icon': Icons.landscape_outlined,      'tag': 'montaña'},
+    {'label': 'Ciudad',      'icon': Icons.location_city_outlined,  'tag': 'ciudad'},
   ];
 
   @override
@@ -35,27 +40,40 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadInitialData() async {
-    await _loadUserData();
-    // Aquí cargarías tus destinos reales de Supabase si los tienes listos
-    setState(() => isLoading = false);
+    await Future.wait([_loadUserData(), _loadFeatured()]);
+    if (mounted) setState(() => isLoading = false);
   }
 
   Future<void> _loadUserData() async {
     try {
       final user = _supabase.auth.currentUser;
-      if (user != null) {
-        final profile = await ProfileService().getProfile(user.id);
-        
-        if (mounted && profile != null) { // 👈 Añadimos la comprobación de profile != null
-          setState(() {
-            // Usamos ?. para acceder de forma segura
-            userName = profile['full_name']?.split(' ')[0] ?? 'Viajero';
-            userAvatar = profile['avatar_url'];
-          });
-        }
+      if (user == null) return;
+      final profile = await ProfileService().getProfile(user.id);
+      if (mounted && profile != null) {
+        setState(() {
+          userName = profile['full_name']?.split(' ')[0] ?? 'Viajero';
+          userAvatar = profile['avatar_url'];
+        });
       }
     } catch (e) {
       debugPrint('Error cargando perfil: $e');
+    }
+  }
+
+  Future<void> _loadFeatured() async {
+    try {
+      final all = await _repository.getDestinations();
+      if (mounted) {
+        setState(() {
+          // Top 5 por rating
+          _featured = (List<Destination>.from(all)
+                ..sort((a, b) => b.rating.compareTo(a.rating)))
+              .take(5)
+              .toList();
+        });
+      }
+    } catch (e) {
+      debugPrint('Error cargando destacados: $e');
     }
   }
 
@@ -63,166 +81,202 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    // Límite de ancho para web — centrado como app empresarial
+    final isWide = MediaQuery.of(context).size.width > 700;
+    final maxWidth = isWide ? 700.0 : double.infinity;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      body: CustomScrollView(
-        slivers: [
-          // ── HEADER PREMIUM ────────────────────────────────────────────────
-          SliverToBoxAdapter(
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(24, 60, 24, 40),
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF0B1C2D) : theme.primaryColor,
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(32),
-                  bottomRight: Radius.circular(32),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+      body: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: maxWidth),
+          child: CustomScrollView(
+            slivers: [
+              // ── HEADER ─────────────────────────────────────────────────
+              SliverToBoxAdapter(
+                child: Container(
+                  padding: EdgeInsets.fromLTRB(24, isWide ? 40 : 60, 24, 40),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF0B1C2D) : theme.primaryColor,
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(32),
+                      bottomRight: Radius.circular(32),
+                    ),
+                  ),
+                  child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Explora ahora',
-                            style: TextStyle(color: Colors.white70, fontSize: 14),
-                          ),
-                          Text(
-                            'Hola, $userName 👋',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                          const Text('Explora ahora',
+                              style: TextStyle(color: Colors.white70, fontSize: 14)),
+                          Text('Hola, $userName 👋',
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold)),
                         ],
                       ),
-                      CircleAvatar(
-                        radius: 25,
-                        backgroundColor: Colors.white24,
-                        backgroundImage: userAvatar != null ? NetworkImage(userAvatar!) : null,
-                        child: userAvatar == null 
-                            ? const Icon(Icons.person, color: Colors.white) 
-                            : null,
+                      GestureDetector(
+                        onTap: () => Navigator.pushNamed(context, AppRoutes.profile),
+                        child: CircleAvatar(
+                          radius: 25,
+                          backgroundColor: Colors.white24,
+                          backgroundImage: userAvatar != null
+                              ? NetworkImage(userAvatar!)
+                              : null,
+                          child: userAvatar == null
+                              ? const Icon(Icons.person, color: Colors.white)
+                              : null,
+                        ),
                       ),
                     ],
                   ),
-                ],
-              ),
-            ),
-          ),
-
-          // ── ACCESOS RÁPIDOS (PLANEAR / RESERVAS) ──────────────────────────
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _QuickAction(
-                      icon: Icons.auto_awesome,
-                      label: 'Planear con IA',
-                      color: AppColors.accent,
-                      onTap: () => Navigator.pushNamed(context, AppRoutes.planTrip),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: _QuickAction(
-                      icon: Icons.bookmark_outline,
-                      label: 'Mis Reservas',
-                      color: Colors.orange,
-                      onTap: () => Navigator.pushNamed(context, AppRoutes.reservations),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // ── CATEGORÍAS ────────────────────────────────────────────────────
-          SliverToBoxAdapter(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 24),
-                  child: SectionTitle(title: 'Categorías'),
                 ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  height: 100,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    scrollDirection: Axis.horizontal,
-                    itemCount: _categories.length,
-                    itemBuilder: (context, index) {
-                      final cat = _categories[index];
-                      return _CategoryItem(
-                        icon: cat['icon'],
-                        label: cat['label'],
-                        onTap: () {
-                          // Navegar a explorar con filtro
+              ),
+
+              // ── ACCESOS RÁPIDOS ────────────────────────────────────────
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _QuickAction(
+                          icon: Icons.auto_awesome,
+                          label: 'Planear con IA',
+                          color: AppColors.accent,
+                          onTap: () =>
+                              Navigator.pushNamed(context, AppRoutes.planTrip),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _QuickAction(
+                          icon: Icons.bookmark_outline,
+                          label: 'Mis Reservas',
+                          color: Colors.orange,
+                          onTap: () =>
+                              Navigator.pushNamed(context, AppRoutes.reservations),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // ── CATEGORÍAS ─────────────────────────────────────────────
+              SliverToBoxAdapter(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(24, 28, 24, 16),
+                      child: SectionTitle(title: 'Categorías'),
+                    ),
+                    SizedBox(
+                      height: 100,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _categories.length,
+                        itemBuilder: (context, index) {
+                          final cat = _categories[index];
+                          return _CategoryItem(
+                            icon: cat['icon'],
+                            label: cat['label'],
+                            onTap: () => Navigator.pushNamed(
+                              context,
+                              AppRoutes.explore,
+                              arguments: {'category': cat['tag']},
+                            ),
+                          );
                         },
-                      );
-                    },
-                  ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
+              ),
 
-          // ── DESTINOS DESTACADOS ──────────────────────────────────────────
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 100),
-              child: Column(
-                children: [
-                  SectionTitle(
+              // ── DESTINOS DESTACADOS ────────────────────────────────────
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 28, 24, 0),
+                  child: SectionTitle(
                     title: 'Destinos Populares',
-                    onActionTap: () => Navigator.pushNamed(context, AppRoutes.explore),
+                    onActionTap: () =>
+                        Navigator.pushNamed(context, AppRoutes.explore),
                     actionLabel: 'Ver todos',
                   ),
-                  const SizedBox(height: 16),
-                  // Aquí iría tu lista de destinos, por ahora un placeholder elegante
-                  Container(
-                    width: double.infinity,
-                    height: 200,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surface,
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: theme.dividerColor),
-                    ),
-                    child: Center(
-                      child: Text(
-                        'Cargando destinos...',
-                        style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.5)),
+                ),
+              ),
+
+              if (_featured.isEmpty)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+                    child: Container(
+                      height: 180,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surface,
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: theme.dividerColor),
+                      ),
+                      child: Center(
+                        child: isLoading
+                            ? const CircularProgressIndicator()
+                            : Text('No hay destinos disponibles',
+                                style: TextStyle(
+                                    color: theme.colorScheme.onSurface
+                                        .withOpacity(0.5))),
                       ),
                     ),
                   ),
-                ],
-              ),
-            ),
+                )
+              else
+                SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final dest = _featured[index];
+                      return Padding(
+                        padding: EdgeInsets.fromLTRB(
+                            24, index == 0 ? 16 : 12, 24, 0),
+                        child: _FeaturedCard(
+                          destination: dest,
+                          onTap: () => Navigator.pushNamed(
+                            context,
+                            AppRoutes.destinationDetail,
+                            arguments: dest,
+                          ),
+                        ),
+                      );
+                    },
+                    childCount: _featured.length,
+                  ),
+                ),
+
+              // Espaciado final para el bottom nav
+              const SliverToBoxAdapter(child: SizedBox(height: 100)),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 }
 
-// ── WIDGETS DE APOYO CORREGIDOS ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Componentes
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _CategoryItem extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
 
-  const _CategoryItem({required this.icon, required this.label, required this.onTap});
+  const _CategoryItem(
+      {required this.icon, required this.label, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -230,33 +284,36 @@ class _CategoryItem extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 90,
-        margin: const EdgeInsets.symmetric(horizontal: 8),
+        width: 86,
+        margin: const EdgeInsets.symmetric(horizontal: 6),
         child: Column(
           children: [
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: theme.colorScheme.surface,
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(theme.brightness == Brightness.dark ? 0.2 : 0.05),
+                    color: Colors.black.withOpacity(
+                        theme.brightness == Brightness.dark ? 0.2 : 0.06),
                     blurRadius: 10,
                   )
                 ],
               ),
-              child: Icon(icon, color: AppColors.accent, size: 26),
+              child: Icon(icon, color: AppColors.accent, size: 24),
             ),
             const SizedBox(height: 8),
             Text(
               label,
               style: TextStyle(
-                fontSize: 12, 
+                fontSize: 11,
                 fontWeight: FontWeight.w600,
                 color: theme.colorScheme.onSurface,
               ),
               textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -271,7 +328,11 @@ class _QuickAction extends StatelessWidget {
   final Color color;
   final VoidCallback onTap;
 
-  const _QuickAction({required this.icon, required this.label, required this.color, required this.onTap});
+  const _QuickAction(
+      {required this.icon,
+      required this.label,
+      required this.color,
+      required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -279,22 +340,119 @@ class _QuickAction extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 20),
+        padding: const EdgeInsets.symmetric(vertical: 18),
         decoration: BoxDecoration(
           color: color.withOpacity(isDark ? 0.15 : 0.08),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(color: color.withOpacity(0.2)),
         ),
         child: Column(
           children: [
-            Icon(icon, color: color, size: 30),
+            Icon(icon, color: color, size: 26),
             const SizedBox(height: 8),
             Text(
               label,
               style: TextStyle(
-                color: color, 
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
+                  color: color, fontWeight: FontWeight.bold, fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FeaturedCard extends StatelessWidget {
+  final Destination destination;
+  final VoidCallback onTap;
+
+  const _FeaturedCard({required this.destination, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Card(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        elevation: 4,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Imagen
+            ClipRRect(
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(20)),
+              child: Hero(
+                tag: destination.id,
+                child: CachedNetworkImage(
+                  imageUrl: destination.mainImage,
+                  height: 180,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  placeholder: (_, __) => Container(
+                    height: 180,
+                    color: Colors.grey[200],
+                    child: const Center(
+                        child: CircularProgressIndicator(strokeWidth: 2)),
+                  ),
+                  errorWidget: (_, __, ___) => Container(
+                    height: 180,
+                    color: Colors.grey[300],
+                    child: const Icon(Icons.image_not_supported, size: 40),
+                  ),
+                ),
+              ),
+            ),
+            // Info
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(destination.title,
+                            style: const TextStyle(
+                                fontSize: 17, fontWeight: FontWeight.bold),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis),
+                        const SizedBox(height: 4),
+                        Row(children: [
+                          const Icon(Icons.location_on_outlined,
+                              size: 13, color: Colors.grey),
+                          const SizedBox(width: 3),
+                          Text(
+                            '${destination.city}, ${destination.country}',
+                            style: TextStyle(
+                                color: Colors.grey[500], fontSize: 12),
+                          ),
+                        ]),
+                      ],
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Row(children: [
+                        const Icon(Icons.star, color: Colors.amber, size: 14),
+                        const SizedBox(width: 3),
+                        Text('${destination.rating}',
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w600, fontSize: 13)),
+                      ]),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Desde \$${destination.priceMin.toInt()}',
+                        style: const TextStyle(
+                            color: AppColors.accent,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ],
