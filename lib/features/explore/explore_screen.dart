@@ -332,7 +332,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   ),
                 ),
                 SizedBox(
-                  height: 260,
+                  height: 320,
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -344,6 +344,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         child: DestinationCard(
                           destination: destination,
                           userPosition: _userPosition,
+                          // FIX: prefijo 'rec_' evita Hero duplicado con la lista principal
+                          heroPrefix: 'rec_',
                         ),
                       );
                     },
@@ -555,11 +557,13 @@ class _FilterChip extends StatelessWidget {
 class DestinationCard extends StatelessWidget {
   final Destination destination;
   final Position? userPosition;
+  final String heroPrefix;
 
   const DestinationCard({
     super.key,
     required this.destination,
     this.userPosition,
+    this.heroPrefix = '',
   });
 
   @override
@@ -587,7 +591,7 @@ class DestinationCard extends StatelessWidget {
           ClipRRect(
             borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
             child: Hero(
-              tag: destination.id,
+              tag: '$heroPrefix${destination.id}',
               child: CachedNetworkImage(
                 imageUrl: destination.mainImage,
                 height: 200,

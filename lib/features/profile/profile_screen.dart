@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
+import '../admin/admin_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/routes/app_routes.dart';
 import '../../providers/theme_provider.dart';
@@ -605,11 +605,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         const ProfileSectionTitle(title: 'Cuenta'),
                         SettingsCard(
                           children: [
-                            ActionTile(
-                              icon: Icons.admin_panel_settings_outlined,
-                              label: 'Panel de administración',
-                              color: Colors.purple,
-                              onTap: () => Navigator.pushNamed(context, AppRoutes.admin),
+                            // Admin panel — solo visible para admins
+                            FutureBuilder<bool>(
+                              future: AdminService().isAdmin(),
+                              builder: (context, snapshot) {
+                                if (snapshot.data != true) return const SizedBox.shrink();
+                                return Column(
+                                  children: [
+                                    ActionTile(
+                                      icon: Icons.admin_panel_settings_outlined,
+                                      label: 'Panel de administración',
+                                      color: Colors.purple,
+                                      onTap: () => Navigator.pushNamed(context, AppRoutes.admin),
+                                    ),
+                                    const SettingsDivider(),
+                                  ],
+                                );
+                              },
                             ),
                             const SettingsDivider(),
                             ActionTile(
