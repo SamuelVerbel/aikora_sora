@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/routes/app_routes.dart';
 import '../reservations/reservations_service.dart';
+import '../trip/repositories/trip_repository.dart';
 
-/// Muestra el itinerario generado por IA simulada localmente.
+/// Muestra el itinerario generado por IA.
+/// RF-19: Compartir itinerario por enlace
+/// RF-20: Colaboración en tiempo real con Supabase Realtime
 class PlanResultScreen extends StatefulWidget {
   final Map<String, dynamic> args;
   const PlanResultScreen({super.key, required this.args});
@@ -17,19 +21,33 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
   bool _loadingAI = true;
   bool _isSaving = false;
   bool _saved = false;
+  bool _usedRemoteAI = false; // true si el plan vino de la API, false si es local
+
+  // RF-20 — Realtime
+  final TripRepository _tripRepo = TripRepository();
+  RealtimeChannel? _realtimeChannel;
+  List<Map<String, dynamic>> _collaborators = [];
 
   // ── Getters ──────────────────────────────────────────────────────────
-  String get _destinationName => widget.args['destination_name'] ?? 'Destino';
-  String? get _destinationId => widget.args['destination_id'];
-  String get _budget => widget.args['budget'] ?? '0';
-  String get _type => widget.args['type'] ?? 'Cultural';
-  DateTime? get _startDate => widget.args['start_date'] as DateTime?;
-  DateTime? get _endDate => widget.args['end_date'] as DateTime?;
-  int get _travelers => widget.args['travelers'] ?? 1;
+  String get _destinationName =>
+      widget.args['destination_name'] ?? widget.args['trip']?.destinationName ?? 'Destino';
+  String? get _destinationId =>
+      widget.args['destination_id'] ?? widget.args['trip']?.destinationId;
+  String get _budget =>
+      widget.args['budget']?.toString() ?? widget.args['trip']?.budget.toString() ?? '0';
+  String get _type =>
+      widget.args['type'] ?? widget.args['trip']?.type ?? 'Cultural';
+  DateTime? get _startDate =>
+      widget.args['start_date'] as DateTime? ?? widget.args['trip']?.startDate;
+  DateTime? get _endDate =>
+      widget.args['end_date'] as DateTime? ?? widget.args['trip']?.endDate;
+  int get _travelers =>
+      widget.args['travelers'] ?? widget.args['trip']?.travelers ?? 1;
   List<String> get _activities =>
       List<String>.from(widget.args['activities'] ?? []);
   String get _city => widget.args['city'] ?? '';
   String get _country => widget.args['country'] ?? '';
+  String? get _tripId => widget.args['trip_id'] as String?;
 
   int get _numDays {
     if (_startDate != null && _endDate != null) {
@@ -38,7 +56,6 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
     return 3;
   }
 
-  /// Costo estimado por día dividiendo el presupuesto total entre los días
   double get _budgetPerDay {
     final total = double.tryParse(_budget) ?? 0;
     return _numDays > 0 ? total / _numDays : 0;
@@ -53,9 +70,175 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
     return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 
-  // ── LÓGICA IA SIMULADA ──────────────────────────────────────────────
+  @override
+  void initState() {
+    super.initState();
+    _loadAIPlan();
+    if (_tripId != null) {
+      _loadCollaborators();
+      _subscribeRealtime();
+    }
+  }
 
-  /// Títulos de cada día según estilo de viaje
+  @override
+  void dispose() {
+    if (_realtimeChannel != null) {
+      _tripRepo.unsubscribe(_realtimeChannel!);
+    }
+    super.dispose();
+  }
+
+  // ── RF-20: Realtime ────────────────────────────────────────────────────────
+
+  Future<void> _loadCollaborators() async {
+    if (_tripId == null) return;
+    final list = await _tripRepo.getCollaborators(_tripId!);
+    if (mounted) setState(() => _collaborators = list);
+  }
+
+  void _subscribeRealtime() {
+    if (_tripId == null) return;
+    _realtimeChannel = _tripRepo.subscribeToTrip(
+      tripId: _tripId!,
+      onUpdate: (payload) {
+        if (!mounted) return;
+        // Si otro colaborador actualizó el itinerario, lo reflejamos
+        final updatedItinerary = payload['itinerary'];
+        if (updatedItinerary != null) {
+          setState(() {
+            _aiItinerary =
+                List<Map<String, dynamic>>.from(updatedItinerary);
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Row(children: [
+                Icon(Icons.people, color: Colors.white, size: 16),
+                SizedBox(width: 8),
+                Text('Un colaborador actualizó el itinerario'),
+              ]),
+              backgroundColor: Colors.purple,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      },
+    );
+  }
+
+  void _showInviteCollaborator() {
+    if (_tripId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Primero guarda el plan como reserva'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    final emailCtrl = TextEditingController();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+          left: 24,
+          right: 24,
+          top: 20,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text('Invitar colaborador',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Text(
+              'El colaborador podrá ver y editar este itinerario en tiempo real.',
+              style: TextStyle(color: Colors.grey[500], fontSize: 13),
+            ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: emailCtrl,
+              autofocus: true,
+              keyboardType: TextInputType.emailAddress,
+              decoration: InputDecoration(
+                labelText: 'Email del colaborador',
+                prefixIcon:
+                    const Icon(Icons.email_outlined, color: AppColors.accent),
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14)),
+              ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.person_add, color: Colors.white),
+                label: const Text('Invitar',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.accent,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
+                ),
+                onPressed: () async {
+                  final email = emailCtrl.text.trim();
+                  if (email.isEmpty) return;
+                  try {
+                    await _tripRepo.inviteCollaborator(
+                      tripId: _tripId!,
+                      email: email,
+                    );
+                    if (ctx.mounted) {
+                      Navigator.pop(ctx);
+                      _loadCollaborators();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Invitación enviada a $email'),
+                          backgroundColor: Colors.green,
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    if (ctx.mounted) {
+                      ScaffoldMessenger.of(ctx).showSnackBar(
+                        SnackBar(
+                          content: Text('Error al invitar: $e'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  }
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    ).then((_) => emailCtrl.dispose());
+  }
+
+  // ── Itinerario local (fallback) ────────────────────────────────────────────
+
   final Map<String, List<String>> _dayTitles = {
     'Cultural': ['Exploración histórica', 'Arte y tradición', 'Día de museos', 'Patrimonio local'],
     'Aventura': ['Actividades al aire libre', 'Exploración extrema', 'Naturaleza salvaje', 'Adrenalina máxima'],
@@ -64,7 +247,6 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
     'Familiar': ['Diversión en familia', 'Juegos y parques', 'Paseo familiar', 'Experiencias compartidas'],
   };
 
-  /// Actividades por franja horaria según estilo
   Map<String, List<String>> get _timeSlots {
     const map = {
       'Cultural': {
@@ -100,7 +282,6 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
     );
   }
 
-  /// Construye el itinerario completo con franjas horarias
   List<Map<String, dynamic>> _buildItinerary() {
     final dayTitles = _dayTitles[_type] ?? _dayTitles['Cultural']!;
     final slots = _timeSlots;
@@ -108,7 +289,6 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
     final List<Map<String, dynamic>> days = [];
 
     for (int i = 0; i < _numDays; i++) {
-      // Distribuye actividades reales del destino en la mañana
       final List<String> realActs = [];
       if (acts.isNotEmpty) {
         final perDay = (acts.length / _numDays).ceil().clamp(1, 3);
@@ -123,7 +303,6 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
             ? _formatDate(_startDate!.add(Duration(days: i)))
             : '',
         'title': dayTitles[i % dayTitles.length],
-        // Franja mañana: usa actividades reales del destino si las hay
         'morning': realActs.isNotEmpty
             ? realActs.map((a) => a[0].toUpperCase() + a.substring(1)).join(', ')
             : slots['morning']![i % slots['morning']!.length],
@@ -135,7 +314,6 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
     return days;
   }
 
-  /// Recomendaciones finales según estilo y destino
   List<Map<String, String>> get _recommendations {
     final Map<String, List<Map<String, String>>> recs = {
       'Cultural': [
@@ -167,7 +345,8 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
     return recs[_type] ?? recs['Cultural']!;
   }
 
-  // ── GUARDAR RESERVA ─────────────────────────────────────────────────
+  // ── Guardar reserva ───────────────────────────────────────────────────────
+
   Future<void> _saveReservation() async {
     if (_destinationId == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -214,41 +393,110 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
 
   Future<void> _loadAIPlan() async {
     try {
-      final response = await ReservationsService()
-          .generateAIPlan(widget.args);
+      final response =
+          await ReservationsService().generateAIPlan(widget.args);
 
       if (!mounted) return;
 
       setState(() {
-        _aiItinerary = List<Map<String, dynamic>>.from(
-          response['days'] ?? [],
-        );
+        _aiItinerary =
+            List<Map<String, dynamic>>.from(response['days'] ?? []);
+        _usedRemoteAI = true; // vino de la API
         _loadingAI = false;
       });
     } catch (e) {
-      print('IA remota falló, usando IA local: $e');
-
+      debugPrint('IA remota falló, usando IA local: $e'); // fix: print → debugPrint
+      if (!mounted) return;
       setState(() {
         _aiItinerary = null;
+        _usedRemoteAI = false;
         _loadingAI = false;
       });
     }
   }
 
-  // ── BUILD ────────────────────────────────────────────────────────────
+  // ── Build ─────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
+    if (_loadingAI) {
+      return const Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Generando tu plan personalizado...'),
+            ],
+          ),
+        ),
+      );
+    }
+
     final itinerary = _aiItinerary ?? _buildItinerary();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Tu plan personalizado ✨')),
+      appBar: AppBar(
+        title: const Text('Tu plan personalizado ✨'),
+        actions: [
+          // RF-20 — botón de colaboración
+          if (_tripId != null)
+            IconButton(
+              tooltip: 'Invitar colaborador',
+              icon: Stack(
+                children: [
+                  const Icon(Icons.people_outline),
+                  if (_collaborators.isNotEmpty)
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      child: Container(
+                        width: 14,
+                        height: 14,
+                        decoration: const BoxDecoration(
+                          color: AppColors.accent,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Text(
+                            '${_collaborators.length}',
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 9),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              onPressed: _showInviteCollaborator,
+            ),
+          // RF-19 — compartir por enlace (placeholder visual)
+          IconButton(
+            tooltip: 'Compartir itinerario',
+            icon: const Icon(Icons.share_outlined),
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    _tripId != null
+                        ? 'Enlace: aikora.app/trip/$_tripId'
+                        : 'Guarda el plan primero para compartirlo',
+                  ),
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
-            // ── Título ──────────────────────────────────────────────────
             Text('Viaje a $_destinationName',
                 style: const TextStyle(
                     fontSize: 26, fontWeight: FontWeight.bold)),
@@ -261,7 +509,7 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
               ),
             const SizedBox(height: 14),
 
-            // ── Chips resumen ───────────────────────────────────────────
+            // Chips resumen
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -281,14 +529,27 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
                     text: '$_numDays día${_numDays > 1 ? 's' : ''}'),
                 _Chip(
                     icon: Icons.savings_outlined,
-                    text:
-                        '~\$${_budgetPerDay.toStringAsFixed(0)}/día'),
+                    text: '~\$${_budgetPerDay.toStringAsFixed(0)}/día'),
               ],
             ),
 
+            // Badge colaboradores activos (RF-20)
+            if (_collaborators.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Row(children: [
+                const Icon(Icons.people, color: Colors.purple, size: 16),
+                const SizedBox(width: 6),
+                Text(
+                  '${_collaborators.length} colaborador${_collaborators.length > 1 ? 'es' : ''} en este viaje',
+                  style: const TextStyle(
+                      color: Colors.purple, fontSize: 13),
+                ),
+              ]),
+            ],
+
             const SizedBox(height: 30),
 
-            // ── Header Itinerario ───────────────────────────────────────
+            // Header itinerario con badge dinámico (LOCAL o IA)
             Row(children: [
               const Text('Itinerario generado por IA',
                   style: TextStyle(
@@ -301,19 +562,26 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
                   color: AppColors.accent.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Text('LOCAL',
-                    style: TextStyle(
-                        color: AppColors.accent,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold)),
+                // Badge dinámico: LOCAL o IA según de dónde vino
+                child: Text(
+                  _usedRemoteAI ? 'IA' : 'LOCAL',
+                  style: const TextStyle(
+                      color: AppColors.accent,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold),
+                ),
               ),
             ]),
-                        const SizedBox(height: 4),
-            Text('Basado en actividades reales del destino',
-                style: TextStyle(color: Colors.grey[500], fontSize: 13)),
+            const SizedBox(height: 4),
+            Text(
+              _usedRemoteAI
+                  ? 'Plan generado por IA en la nube'
+                  : 'Basado en actividades reales del destino',
+              style: TextStyle(color: Colors.grey[500], fontSize: 13),
+            ),
             const SizedBox(height: 20),
 
-            // ── Tarjetas de días ────────────────────────────────────────
+            // Tarjetas de días
             ...itinerary.map((day) => _DayCard(
                   day: day['day']!,
                   date: day['date']!,
@@ -321,19 +589,19 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
                   morning: day['morning']!,
                   afternoon: day['afternoon']!,
                   evening: day['evening']!,
-                  budgetPerDay: day['budget'] as double,
+                  budgetPerDay: (day['budget'] as num).toDouble(),
                 )),
 
             const SizedBox(height: 30),
 
-            // ── Recomendaciones IA ──────────────────────────────────────
+            // Recomendaciones IA
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: AppColors.accent.withOpacity(0.06),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                    color: AppColors.accent.withOpacity(0.2)),
+                border:
+                    Border.all(color: AppColors.accent.withOpacity(0.2)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -371,7 +639,29 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
 
             const SizedBox(height: 30),
 
-            // ── Botón guardar ───────────────────────────────────────────
+            // Botón invitar colaborador (RF-20)
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.people_outline,
+                    color: AppColors.accent),
+                label: const Text('Planear en grupo',
+                    style: TextStyle(
+                        color: AppColors.accent,
+                        fontWeight: FontWeight.w600)),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppColors.accent),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
+                ),
+                onPressed: _showInviteCollaborator,
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // Botón guardar reserva
             SizedBox(
               width: double.infinity,
               height: 54,
@@ -381,8 +671,7 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
                     color: Colors.white),
                 label: Text(
                     _saved ? 'Reserva guardada ✓' : 'Guardar como reserva',
-                    style: const TextStyle(
-                        fontSize: 16, color: Colors.white)),
+                    style: const TextStyle(fontSize: 16, color: Colors.white)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor:
                       _saved ? Colors.green : AppColors.accent,
@@ -400,8 +689,8 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
                 child: OutlinedButton.icon(
                   icon: const Icon(Icons.list_alt),
                   label: const Text('Ver mis reservas'),
-                  onPressed: () => Navigator.pushNamed(
-                      context, AppRoutes.reservations),
+                  onPressed: () =>
+                      Navigator.pushNamed(context, AppRoutes.reservations),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
@@ -419,7 +708,7 @@ class _PlanResultScreenState extends State<PlanResultScreen> {
   }
 }
 
-// ── COMPONENTES ─────────────────────────────────────────────────────────────
+// ── COMPONENTES ──────────────────────────────────────────────────────────────
 
 class _Chip extends StatelessWidget {
   final IconData icon;
@@ -465,15 +754,13 @@ class _DayCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       elevation: 3,
-      shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16)),
+      shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
-            // Header del día
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -512,10 +799,7 @@ class _DayCard extends StatelessWidget {
                   ),
               ],
             ),
-
             const Divider(height: 20),
-
-            // Franja mañana
             _TimeSlot(
               icon: Icons.wb_sunny_outlined,
               label: 'Mañana',
@@ -523,8 +807,6 @@ class _DayCard extends StatelessWidget {
               text: morning,
             ),
             const SizedBox(height: 10),
-
-            // Franja tarde
             _TimeSlot(
               icon: Icons.wb_cloudy_outlined,
               label: 'Tarde',
@@ -532,8 +814,6 @@ class _DayCard extends StatelessWidget {
               text: afternoon,
             ),
             const SizedBox(height: 10),
-
-            // Franja noche
             _TimeSlot(
               icon: Icons.nights_stay_outlined,
               label: 'Noche',

@@ -4,41 +4,43 @@ import '../theme/app_colors.dart';
 class PremiumButton extends StatelessWidget {
   final String text;
   final VoidCallback onPressed;
-  final bool isPrimary;
+  final bool isLoading;
 
   const PremiumButton({
     super.key,
     required this.text,
     required this.onPressed,
-    this.isPrimary = true,
+    this.isLoading = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
+    return Container(
       width: double.infinity,
+      height: 55,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: const LinearGradient(
+          colors: [AppColors.accent, Color(0xFF00A3FF)],
+        ),
+      ),
       child: ElevatedButton(
+        onPressed: isLoading ? null : onPressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor:
-              isPrimary ? AppColors.primary : AppColors.surface,
-          foregroundColor:
-              isPrimary ? Colors.white : AppColors.textPrimary,
-          elevation: 0,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: isPrimary
-                ? BorderSide.none
-                : const BorderSide(color: AppColors.border),
-          ),
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         ),
-        onPressed: onPressed,
-        child: Text(
-          text,
-          style: const TextStyle(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        child: isLoading
+            ? const CircularProgressIndicator(color: Colors.white)
+            : Text(
+                text,
+                style: const TextStyle(
+                  color: Colors.white, // El botón siempre es azul, texto siempre blanco
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
       ),
     );
   }

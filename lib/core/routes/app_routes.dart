@@ -1,7 +1,8 @@
+import 'package:aikora_sora/features/admin/admin_dashboard_screen.dart';
+import 'package:aikora_sora/features/splash/splash_screen.dart';
 import 'package:flutter/material.dart';
 
 // ── AUTH ─────────────────────────────────────────────────────────────────────
-// Pantallas de inicio de sesión/registro y “gate” inicial.
 import '../../features/auth/welcome/welcome_screen.dart';
 import '../../features/auth/login/login_screen.dart';
 import '../../features/auth/register/register_screen.dart';
@@ -24,20 +25,20 @@ import '../../features/explore/explore_screen.dart';
 import '../../features/explore/screens/destination_detail_screen.dart';
 import '../../features/explore/models/destination_model.dart';
 
-/// AppRoutes sirve para:
-/// 1) Tener los nombres de rutas en un solo lugar (evitar typos).
-/// 2) Centralizar la creación de rutas (y manejar argumentos).
+// ── AI ───────────────────────────────────────────────────────────────────────
+import '../../features/ai/chat_screen.dart';
+
 class AppRoutes {
-  // Rutas base de auth
+  // Auth
   static const String authGate = '/';
   static const String welcome = '/welcome';
   static const String login = '/login';
   static const String register = '/register';
 
-  //Navegación principal (BottomNav / tabs)
+  // Navegación principal
   static const String main = '/main';
 
-  // Rutas de pantallas
+  // Pantallas
   static const String home = '/home';
   static const String profile = '/profile';
   static const String planTrip = '/plan';
@@ -47,10 +48,13 @@ class AppRoutes {
   static const String reservations = '/reservations';
   static const String notifications = '/notifications';
   static const String restaurants = '/restaurants';
+  static const String splash = '/splash';
+  static const String admin = '/admin';
 
-  /// Genera la ruta según settings.name.
-  /// Ventaja: puedes interceptar argumentos, validar tipos y evitar crashes.
-  /// 
+  // RF-21 — Chat con Sora
+  // Acepta un Destination opcional como argumento para dar contexto al chat.
+  static const String chat = '/chat';
+
   static Route<dynamic> _errorRoute() {
     return MaterialPageRoute(
       builder: (_) => const Scaffold(
@@ -58,50 +62,38 @@ class AppRoutes {
       ),
     );
   }
+
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
-      
-      // ── AUTH GATE ──
+
+      case AppRoutes.splash:
+        return MaterialPageRoute(builder: (_) => const SplashScreen());
+
       case authGate:
-        return MaterialPageRoute(
-          builder: (_) => const AuthGate(),
-        );
+        return MaterialPageRoute(builder: (_) => const AuthGate());
 
       case welcome:
-        return MaterialPageRoute(
-          builder: (_) => const WelcomeScreen(),
-        );
+        return MaterialPageRoute(builder: (_) => const WelcomeScreen());
 
       case login:
-        return MaterialPageRoute(
-          builder: (_) => const LoginScreen(),
-        );
+        return MaterialPageRoute(builder: (_) => const LoginScreen());
 
       case register:
-        return MaterialPageRoute(
-          builder: (_) => const RegisterScreen(),
-        );
+        return MaterialPageRoute(builder: (_) => const RegisterScreen());
 
-      // ── MAIN NAV ──
       case main:
         return MaterialPageRoute(
-          builder: (_) => const MainNavigationScreen(),
-        );
+            builder: (_) => const MainNavigationScreen());
 
-      // ── HOME ──
       case home:
-        return MaterialPageRoute(
-          builder: (_) => const HomeScreen(),
-        );
+        return MaterialPageRoute(builder: (_) => const HomeScreen());
 
-      // ── PROFILE ──
       case profile:
-        return MaterialPageRoute(
-          builder: (_) => const ProfileScreen(),
-        );
+        return MaterialPageRoute(builder: (_) => const ProfileScreen());
 
-      // ── PLAN TRIP ──
-      // Aquí recibimos opcionalmente un Destination (cuando vienes desde el detalle).
+      case admin:
+        return MaterialPageRoute(builder: (_) => const AdminDashboardScreen());
+
       case planTrip:
         final dest = settings.arguments;
         return MaterialPageRoute(
@@ -110,59 +102,48 @@ class AppRoutes {
           ),
         );
 
-      // ── EXPLORE ──
       case explore:
-      // OJO: aquí podrías recibir filtros (ej: {'category': 'playa'}),
-      // pero por ahora ExploreScreen se encarga de leerlos desde settings.arguments.
-        return MaterialPageRoute(
-          builder: (_) => const ExploreScreen(),
-        );
+        return MaterialPageRoute(builder: (_) => const ExploreScreen());
 
-      // ── DESTINATION DETAIL ──
       case destinationDetail:
-      // Este sí es obligatorio: si no viene, el cast rompe.
         final args = settings.arguments;
-        if (args is! Destination) {
-          return _errorRoute();
-        }
-
+        if (args is! Destination) return _errorRoute();
         return MaterialPageRoute(
           builder: (_) => DestinationDetailScreen(destination: args),
         );
 
-      // ── PLAN RESULT ──
       case planResult:
-      // Args del plan: fechas, viajeros, presupuesto, etc.
         final args = settings.arguments as Map<String, dynamic>;
         return MaterialPageRoute(
-          builder: (_) => PlanResultScreen(args: args),
-        );
+            builder: (_) => PlanResultScreen(args: args));
 
-      // ── RESERVATIONS ──
       case reservations:
         return MaterialPageRoute(
-          builder: (_) => const ReservationsScreen(),
-        );
+            builder: (_) => const ReservationsScreen());
 
-      // ── NOTIFICATIONS ──
       case notifications:
         return MaterialPageRoute(
-          builder: (_) => const NotificationsScreen(),
-        );
+            builder: (_) => const NotificationsScreen());
 
-      // ── RESTAURANTS ──
       case restaurants:
         return MaterialPageRoute(
           builder: (_) => const RestaurantsScreen(),
-          settings: settings, // ← ESTO es lo que faltaba
+          settings: settings,
         );
 
-      // ── DEFAULT ──
-      default:
-      // Si llega una ruta desconocida, volvemos al AuthGate para no “romper” la app.
+      // RF-21 — Chat con Sora
+      // Desde destination_detail_screen puedes navegar así:
+      // Navigator.pushNamed(context, AppRoutes.chat, arguments: destination);
+      case chat:
+        final dest = settings.arguments;
         return MaterialPageRoute(
-          builder: (_) => const AuthGate(),
+          builder: (_) => ChatScreen(
+            destination: dest is Destination ? dest : null,
+          ),
         );
+
+      default:
+        return MaterialPageRoute(builder: (_) => const AuthGate());
     }
   }
 }

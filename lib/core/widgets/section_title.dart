@@ -1,23 +1,42 @@
 import 'package:flutter/material.dart';
-import '../theme/app_colors.dart';
 
 class SectionTitle extends StatelessWidget {
   final String title;
+  final VoidCallback? onActionTap;
+  final String? actionLabel;
 
   const SectionTitle({
     super.key,
     required this.title,
+    this.onActionTap,
+    this.actionLabel,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      title,
-      style: const TextStyle(
-        fontSize: 22,
-        fontWeight: FontWeight.bold,
-        color: AppColors.textPrimary,
-      ),
+    final theme = Theme.of(context);
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            // ✅ Cambiado: Usa el color del tema automáticamente
+            color: theme.colorScheme.onSurface,
+          ),
+        ),
+        if (onActionTap != null)
+          TextButton(
+            onPressed: onActionTap,
+            child: Text(
+              actionLabel ?? 'Ver más',
+              style: TextStyle(color: theme.primaryColor),
+            ),
+          ),
+      ],
     );
   }
 }

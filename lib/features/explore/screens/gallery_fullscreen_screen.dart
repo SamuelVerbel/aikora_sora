@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 /// Visor de imágenes a pantalla completa.
-/// Permite al usuario hacer zoom (InteractiveViewer) y deslizar entre las
-/// diferentes fotos del destino (PageView).
+/// Permite zoom (InteractiveViewer) y deslizar entre fotos (PageView).
 class GalleryFullscreenScreen extends StatefulWidget {
-  final List<String> images;   // Lista de URLs de las imágenes
-  final int initialIndex;      // Foto que el usuario tocó (para abrir directamente ahí)
+  final List<String> images;
+  final int initialIndex;
 
   const GalleryFullscreenScreen({
     super.key,
@@ -18,47 +18,59 @@ class GalleryFullscreenScreen extends StatefulWidget {
       _GalleryFullscreenScreenState();
 }
 
-class _GalleryFullscreenScreenState
-    extends State<GalleryFullscreenScreen> {
-  late PageController _controller;
+class _GalleryFullscreenScreenState extends State<GalleryFullscreenScreen> {
+  late final PageController _controller;
   late int currentIndex;
 
   @override
   void initState() {
     super.initState();
     currentIndex = widget.initialIndex;
-    // El PageController arranca en el índice exacto de la foto seleccionada
     _controller = PageController(initialPage: currentIndex);
+  }
+
+  @override
+  void dispose() {
+    // FIX: dispose del controller para evitar memory leaks
+    _controller.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black, // Fondo negro para resaltar las fotos
+      backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // ── Carrusel de Imágenes ───────────────────────────────────────
+
+          // Carrusel con zoom
           PageView.builder(
             controller: _controller,
             itemCount: widget.images.length,
-            onPageChanged: (index) {
-              // Actualiza el contador de abajo cuando deslizamos
-              setState(() => currentIndex = index);
-            },
+            onPageChanged: (index) =>
+                setState(() => currentIndex = index),
             itemBuilder: (context, index) {
-              // InteractiveViewer es la magia que permite hacer zoom con los dedos (Pinch-to-zoom)
               return InteractiveViewer(
                 child: Center(
-                  child: Image.network(
-                    widget.images[index],
-                    fit: BoxFit.contain, // Mantiene la proporción de la foto
+                  child: CachedNetworkImage(
+                    imageUrl: widget.images[index],
+                    fit: BoxFit.contain,
+                    placeholder: (_, __) => const Center(
+                      child: CircularProgressIndicator(
+                          color: Colors.white, strokeWidth: 2),
+                    ),
+                    errorWidget: (_, __, ___) => const Icon(
+                      Icons.image_not_supported,
+                      color: Colors.white54,
+                      size: 60,
+                    ),
                   ),
                 ),
               );
             },
           ),
 
-          // ── 🔙 Botón cerrar (Esquina superior izquierda) ───────────────
+          // Botón cerrar
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -72,17 +84,20 @@ class _GalleryFullscreenScreenState
             ),
           ),
 
-          // ── 🔢 Indicador inferior (Ej: 2 / 5) ──────────────────────────
+          // Contador
           Positioned(
-            bottom: 30,
-            left: 0,
-            right: 0,
+            bottom: 30, left: 0, right: 0,
             child: Center(
-              child: Text(
-                '${currentIndex + 1} / ${widget.images.length}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '${currentIndex + 1} / ${widget.images.length}',
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
                 ),
               ),
             ),

@@ -18,6 +18,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # ☕️ Setup Java
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
       # 🐦 Setup Flutter
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -39,6 +46,7 @@ jobs:
             static const supabaseUrl = "${{ secrets.SUPABASE_URL }}";
             static const supabaseAnonKey = "${{ secrets.SUPABASE_ANON_KEY }}";
             static const googleMapsApiKey = "${{ secrets.GOOGLE_MAPS_API_KEY }}";
+            static const groqApiKey = "${{ secrets.GROQ_API_KEY }}";
           }
           EOF
 

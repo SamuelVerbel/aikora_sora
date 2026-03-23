@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
-import '../explore/models/destination_model.dart';
+import './../explore/models/destination_model.dart'; // ← import corregido
 import 'reservations_service.dart';
 
 class CreateReservationScreen extends StatefulWidget {
@@ -162,6 +162,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Handle bar
             Center(
               child: Container(
                 width: 40,
@@ -173,10 +174,10 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
               ),
             ),
             const SizedBox(height: 16),
+
             Text(
               'Reservar en ${widget.destination.title}',
-              style: const TextStyle(
-                  fontSize: 20, fontWeight: FontWeight.bold),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             Text(
               '${widget.destination.city}, ${widget.destination.country}',
@@ -184,6 +185,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
             ),
             const SizedBox(height: 24),
 
+            // Fechas
             const Text('Fechas del viaje',
                 style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
             const SizedBox(height: 10),
@@ -192,9 +194,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                 Expanded(
                   child: _DateButton(
                     label: 'Entrada',
-                    date: _startDate != null
-                        ? _formatDate(_startDate!)
-                        : null,
+                    date: _startDate != null ? _formatDate(_startDate!) : null,
                     icon: Icons.flight_land_outlined,
                     onTap: () => _pickDate(isStart: true),
                   ),
@@ -221,19 +221,19 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                     Text(
                       '$_nights noche${_nights != 1 ? 's' : ''}',
                       style: const TextStyle(
-                          color: AppColors.accent,
-                          fontWeight: FontWeight.w600),
+                          color: AppColors.accent, fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),
               ),
             const SizedBox(height: 20),
+
+            // Viajeros
             const Text('Viajeros',
                 style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
             const SizedBox(height: 10),
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               decoration: BoxDecoration(
                 border: Border.all(color: Colors.grey.shade300),
                 borderRadius: BorderRadius.circular(12),
@@ -253,27 +253,24 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                   Row(children: [
                     IconButton(
                       icon: const Icon(Icons.remove_circle_outline),
-                      color: _travelers > 1
-                          ? AppColors.accent
-                          : Colors.grey[300],
-                      onPressed: _travelers > 1
-                          ? () => setState(() => _travelers--)
-                          : null,
+                      color: _travelers > 1 ? AppColors.accent : Colors.grey[300],
+                      onPressed:
+                          _travelers > 1 ? () => setState(() => _travelers--) : null,
                     ),
                     IconButton(
                       icon: const Icon(Icons.add_circle_outline),
-                      color: _travelers < 20
-                          ? AppColors.accent
-                          : Colors.grey[300],
-                      onPressed: _travelers < 20
-                          ? () => setState(() => _travelers++)
-                          : null,
+                      color:
+                          _travelers < 20 ? AppColors.accent : Colors.grey[300],
+                      onPressed:
+                          _travelers < 20 ? () => setState(() => _travelers++) : null,
                     ),
                   ]),
                 ],
               ),
             ),
             const SizedBox(height: 20),
+
+            // Notas
             const Text('Notas (opcional)',
                 style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
             const SizedBox(height: 10),
@@ -282,20 +279,27 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
               maxLines: 3,
               maxLength: 200,
               buildCounter: (context,
-                      {required currentLength, maxLength, required isFocused}) =>
-                  Text('$currentLength / $maxLength',
-                      style: TextStyle(
-                          color: currentLength > maxLength!
-                              ? Colors.red
-                              : Colors.grey[500],
-                          fontSize: 12)),
+                      {required currentLength,
+                      maxLength,
+                      required isFocused}) =>
+                  Text(
+                '$currentLength / $maxLength',
+                style: TextStyle(
+                  color: currentLength > maxLength!
+                      ? Colors.red
+                      : Colors.grey[500],
+                  fontSize: 12,
+                ),
+              ),
               decoration: InputDecoration(
                 hintText: 'Solicitudes especiales, preferencias...',
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12)),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 contentPadding: const EdgeInsets.all(12),
               ),
             ),
+
+            // Estimado
             if (_estimatedTotal > 0)
               Container(
                 padding: const EdgeInsets.all(14),
@@ -321,6 +325,8 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                 ),
               ),
             const SizedBox(height: 8),
+
+            // Botón confirmar
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -353,6 +359,10 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Componente botón de fecha
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _DateButton extends StatelessWidget {
   final String label;

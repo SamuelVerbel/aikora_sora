@@ -3,22 +3,30 @@ import '../theme/app_colors.dart';
 
 class PremiumCard extends StatelessWidget {
   final Widget child;
-  final EdgeInsets padding;
+  final EdgeInsetsGeometry? padding;
 
-  const PremiumCard({
-    super.key,
-    required this.child,
-    this.padding = const EdgeInsets.all(20),
-  });
+  const PremiumCard({super.key, required this.child, this.padding});
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
-      padding: padding,
+      padding: padding ?? const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        // ✅ Cambiado: Usa 'surface' para oscuro y 'lightSurface' para claro
+        color: isDark ? AppColors.surface : AppColors.lightSurface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(
+          color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05),
+        ),
       ),
       child: child,
     );

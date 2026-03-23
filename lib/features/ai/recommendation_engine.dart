@@ -40,7 +40,8 @@ class RecommendationEngine {
     }
 
     // ⭐ rating alto
-    score += d.rating ?? 0;
+    score += d.rating;
+
 
     return score;
   }

@@ -118,7 +118,7 @@ class _SplashScreenState extends State<SplashScreen>
     // Pausa final antes de navegar
     await Future.delayed(const Duration(milliseconds: 700));
     // pushReplacementNamed evita que el usuario pueda volver al splash con "atrás"
-    if (mounted) Navigator.pushReplacementNamed(context, AppRoutes.home);
+    if (mounted) Navigator.pushReplacementNamed(context, AppRoutes.authGate);
   }
 
   @override

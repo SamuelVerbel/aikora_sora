@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ReservationsService {
@@ -16,7 +17,7 @@ class ReservationsService {
 
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
-      print('Error cargando reservas: $e');
+      debugPrint('Error cargando reservas: $e');
       return [];
     }
   }
@@ -45,10 +46,11 @@ class ReservationsService {
   Future<void> cancelReservation(String reservationId) async {
     await _supabase
         .from('reservations')
-        .update({'status': 'cancelled'})
-        .eq('id', reservationId);
+        .update({'status': 'cancelled'}).eq('id', reservationId);
   }
 
+  /// Genera un plan de viaje usando la Edge Function de Supabase.
+  /// Si falla, el caller debe manejar el error.
   Future<Map<String, dynamic>> generateAIPlan(
     Map<String, dynamic> args,
   ) async {
@@ -68,13 +70,11 @@ class ReservationsService {
         },
       );
 
-      if (response.data == null) {
-        throw Exception('Respuesta IA vacía');
-      }
+      if (response.data == null) throw Exception('Respuesta IA vacía');
 
       return Map<String, dynamic>.from(response.data);
     } catch (e) {
-      print('Error llamando IA: $e');
+      debugPrint('Error llamando IA: $e');
       rethrow;
     }
   }

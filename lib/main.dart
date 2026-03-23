@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'core/config/env.example.dart';
+import 'core/config/env.dart';
 
 import 'core/theme/app_theme.dart';
 import 'core/routes/app_routes.dart';
@@ -37,8 +37,8 @@ class AikoraSoraApp extends StatelessWidget {
           title: 'Aikōra Sora',
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
-          themeMode: themeProvider.themeMode,
-          initialRoute: AppRoutes.authGate,
+          themeMode: ThemeMode.system,
+          initialRoute: AppRoutes.splash,
           onGenerateRoute: AppRoutes.generateRoute,
         );
       },

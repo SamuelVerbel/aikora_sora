@@ -4,33 +4,49 @@ import 'dart:io' show Platform;
 
 class MapLauncherService {
   static Future<void> openGoogleMaps(double lat, double lng) async {
-    final String googleUrl = 'https://www.google.com/maps/search/?api=1&query=$lat,$lng';
+    final String googleUrl =
+        'https://www.google.com/maps/search/?api=1&query=$lat,$lng';
     final String appleUrl = 'https://maps.apple.com/?q=$lat,$lng';
 
-    if (kIsWeb) {
-      // En WEB: Abrir siempre en nueva pestaña
-      await launchUrl(Uri.parse(googleUrl));
-    } else {
-      // En MOBILE (Android/iOS)
+    try {
+      if (kIsWeb) {
+        // Web: abre en nueva pestaña
+        await launchUrl(Uri.parse(googleUrl),
+            mode: LaunchMode.externalApplication);
+        return;
+      }
+
       if (Platform.isAndroid) {
-        final Uri intentUri = Uri.parse("google.navigation:q=$lat,$lng&mode=d");
+        // Android: intenta abrir Google Maps nativo primero
+        final Uri intentUri =
+            Uri.parse('google.navigation:q=$lat,$lng&mode=d');
         if (await canLaunchUrl(intentUri)) {
           await launchUrl(intentUri);
-        } else {
-          await launchUrl(Uri.parse(googleUrl), mode: LaunchMode.externalApplication);
+          return;
         }
-      } else if (Platform.isIOS) {
+        // Fallback: abre en navegador
+        await launchUrl(Uri.parse(googleUrl),
+            mode: LaunchMode.externalApplication);
+        return;
+      }
+
+      if (Platform.isIOS) {
+        // iOS: intenta Apple Maps primero
         if (await canLaunchUrl(Uri.parse(appleUrl))) {
           await launchUrl(Uri.parse(appleUrl));
-        } else {
-          await launchUrl(Uri.parse(googleUrl), mode: LaunchMode.externalApplication);
+          return;
         }
+        // Fallback: Google Maps en navegador
+        await launchUrl(Uri.parse(googleUrl),
+            mode: LaunchMode.externalApplication);
+        return;
       }
-    }
 
-    await launchUrl(
-      Uri.parse(googleUrl),
-      mode: LaunchMode.externalApplication,
-    );
+      // Otras plataformas (desktop, etc.)
+      await launchUrl(Uri.parse(googleUrl),
+          mode: LaunchMode.externalApplication);
+    } catch (e) {
+      debugPrint('MapLauncherService error: $e');
+    }
   }
 }
