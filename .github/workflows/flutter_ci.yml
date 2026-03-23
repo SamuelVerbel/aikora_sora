@@ -12,18 +12,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 📥 Checkout
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # ☕️ Setup Java
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
 
-      # 🐦 Setup Flutter
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -31,51 +28,40 @@ jobs:
           channel: stable
           cache: true
 
-      # 📦 Dependencies
       - name: Install dependencies
         run: flutter pub get
 
-      # 🔐 Create env.dart
       - name: Create env.dart
         run: |
           mkdir -p lib/core/config
-          cat <<EOF > lib/core/config/env.dart
-          class Env {
-            static const supabaseUrl = "${{ secrets.SUPABASE_URL }}";
-            static const supabaseAnonKey = "${{ secrets.SUPABASE_ANON_KEY }}";
-            static const googleMapsApiKey = "${{ secrets.GOOGLE_MAPS_API_KEY }}";
-            static const groqApiKey = "${{ secrets.GROQ_API_KEY }}";
-          }
-          EOF
+          printf 'class Env {\n  static const supabaseUrl = "%s";\n  static const supabaseAnonKey = "%s";\n  static const googleMapsApiKey = "%s";\n  static const groqApiKey = "%s";\n}\n' \
+            "${{ secrets.SUPABASE_URL }}" \
+            "${{ secrets.SUPABASE_ANON_KEY }}" \
+            "${{ secrets.GOOGLE_MAPS_API_KEY }}" \
+            "${{ secrets.GROQ_API_KEY }}" \
+            > lib/core/config/env.dart
 
-      # 🌐 Inject Google Maps API Key into Web
       - name: Inject Google Maps API Key
         run: |
           sed -i 's|YOUR_GOOGLE_MAPS_KEY|${{ secrets.GOOGLE_MAPS_API_KEY }}|g' web/index.html
 
-      # 🔎 Analyze
       - name: Analyze code
         run: flutter analyze --no-fatal-infos
         continue-on-error: true
 
-      # 🧪 Tests
       - name: Run tests
         run: flutter test
         continue-on-error: true
 
-      # 🌐 Build Web
       - name: Build Web
         run: flutter build web --release
 
-      # 📱 Build APK
       - name: Build APK
         run: flutter build apk --release
 
-      # 🏷 Rename APK
       - name: Rename APK
         run: mv build/app/outputs/flutter-apk/app-release.apk aikora-sora.apk
 
-      # ☁️ Upload artifact
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
@@ -83,7 +69,6 @@ jobs:
           path: aikora-sora.apk
           retention-days: 30
 
-      # 🚀 GitHub Release
       - name: Create GitHub Release
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         uses: softprops/action-gh-release@v2
@@ -92,17 +77,13 @@ jobs:
           name: "Aikōra Sora v1.0.${{ github.run_number }}"
           body: |
             🎉 Nueva versión de Aikōra Sora
-
-            Release automático generado desde commit ${{ github.sha }}
-
-            📦 Descargas:
-            - Android APK incluido
+            Release automático desde commit ${{ github.sha }}
+            📦 Android APK incluido
           files: aikora-sora.apk
           make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # 🌍 Deploy Web to GitHub Pages
       - name: Deploy Web
         if: github.ref == 'refs/heads/main'
         uses: peaceiris/actions-gh-pages@v4

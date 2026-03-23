@@ -283,11 +283,11 @@ class _RestaurantCard extends StatelessWidget {
   }
 
   Future<void> _openMap() async {
-    if (restaurant.latitude == 0 || restaurant.longitude == 0) return;
-
-    await MapLauncherService.openGoogleMaps(
-      restaurant.latitude,
-      restaurant.longitude,
+    await MapLauncherService.openGoogleMapsWithName(
+      name: restaurant.name,
+      lat: restaurant.latitude,
+      lng: restaurant.longitude,
+      address: restaurant.address,
     );
   }
 
