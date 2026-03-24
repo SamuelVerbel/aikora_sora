@@ -68,6 +68,16 @@ class AuthService {
     await _supabase.auth.signOut();
   }
 
+  /// Envía un correo de recuperación de contraseña
+  Future<void> resetPassword(String email) async {
+    try {
+      await _supabase.auth.resetPasswordForEmail(email);
+    } catch (e) {
+      debugPrint('Reset password error: $e');
+      throw Exception('No se pudo enviar el correo de recuperación');
+    }
+  }
+
   User? get currentUser => _supabase.auth.currentUser;
 
   Future<Session?> getSession() async => _supabase.auth.currentSession;
