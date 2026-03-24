@@ -144,7 +144,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
       ).toList();
     }
 
-    result = result.where((d) => d.priceMin <= _maxPrice).toList();
+    result = result.where((d) {
+      final priceInUsd = d.currency == 'COP' 
+          ? d.priceMin / 4000  // tasa aproximada COP→USD
+          : d.currency == 'EUR'
+              ? d.priceMin * 1.1
+              : d.priceMin;
+      return priceInUsd <= _maxPrice;
+    }).toList();
 
     if (_minRating > 0) {
       result = result.where((d) => d.rating >= _minRating).toList();
@@ -438,7 +445,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 const SizedBox(height: 20),
 
                 // 1. Presupuesto máximo
-                Text('Presupuesto Máximo: \$${_maxPrice.toInt()}'),
+                Text('Presupuesto Máximo: USD \$${_maxPrice.toInt()}'),
                 Slider(
                   value: _maxPrice,
                   min: 0,
