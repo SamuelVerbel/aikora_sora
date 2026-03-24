@@ -31,19 +31,41 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      # FIX: Usar variables de entorno + cat heredoc en lugar de printf %s
+      # printf interpreta mal caracteres especiales (+, =, /) comunes en API keys
+      # → la key quedaba corrupta → Sora no conectaba en el APK
       - name: Create env.dart
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: |
           mkdir -p lib/core/config
-          printf 'class Env {\n  static const supabaseUrl = "%s";\n  static const supabaseAnonKey = "%s";\n  static const googleMapsApiKey = "%s";\n  static const groqApiKey = "%s";\n}\n' \
-            "${{ secrets.SUPABASE_URL }}" \
-            "${{ secrets.SUPABASE_ANON_KEY }}" \
-            "${{ secrets.GOOGLE_MAPS_API_KEY }}" \
-            "${{ secrets.GROQ_API_KEY }}" \
-            > lib/core/config/env.dart
+          cat > lib/core/config/env.dart << EOF
+          class Env {
+            static const supabaseUrl = "$SUPABASE_URL";
+            static const supabaseAnonKey = "$SUPABASE_ANON_KEY";
+            static const googleMapsApiKey = "$GOOGLE_MAPS_API_KEY";
+            static const groqApiKey = "$GROQ_API_KEY";
+          }
+          EOF
+
+      # Verifica en los logs que las keys se inyectaron (muestra solo los primeros 8 chars)
+      - name: Verify env.dart injection
+        run: |
+          echo "=== env.dart generado ==="
+          head -1 lib/core/config/env.dart
+          echo "supabaseUrl presente: $(grep -c 'supabaseUrl' lib/core/config/env.dart)"
+          echo "groqApiKey presente: $(grep -c 'groqApiKey' lib/core/config/env.dart)"
+          GROQ_VAL=$(grep 'groqApiKey' lib/core/config/env.dart | sed 's/.*"\(.\{0,8\}\).*/\1.../')
+          echo "groqApiKey preview: $GROQ_VAL"
 
       - name: Inject Google Maps API Key
+        env:
+          GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
         run: |
-          sed -i 's|YOUR_GOOGLE_MAPS_KEY|${{ secrets.GOOGLE_MAPS_API_KEY }}|g' web/index.html
+          sed -i "s|YOUR_GOOGLE_MAPS_KEY|$GOOGLE_MAPS_API_KEY|g" web/index.html
 
       - name: Analyze code
         run: flutter analyze --no-fatal-infos
