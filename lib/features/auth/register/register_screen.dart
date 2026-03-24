@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/routes/app_routes.dart';
+import '../../../core/widgets/loading_overlay.dart';
 import '../../../providers/theme_provider.dart';
 import '../services/auth_service.dart';
 import '../login/google_sign_in_button.dart';
@@ -56,6 +57,7 @@ class _RegisterScreenState extends State<RegisterScreen>
     super.dispose();
   }
 
+  // En el método _register()
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
     
@@ -64,7 +66,7 @@ class _RegisterScreenState extends State<RegisterScreen>
       return;
     }
     
-    setState(() => _isLoading = true);
+    LoadingOverlay.show(context, message: 'Creando tu cuenta...');
     
     try {
       await _authService.signUpWithEmail(
@@ -73,11 +75,13 @@ class _RegisterScreenState extends State<RegisterScreen>
         _nameController.text.trim(),
       );
       
+      LoadingOverlay.hide();
       if (mounted) {
         Navigator.pushReplacementNamed(context, AppRoutes.main);
         _showSnackBar('¡Cuenta creada exitosamente! 🎉', true);
       }
     } catch (e) {
+      LoadingOverlay.hide();
       setState(() => _isLoading = false);
       
       String errorMessage = 'Error al crear la cuenta. Intenta de nuevo.';

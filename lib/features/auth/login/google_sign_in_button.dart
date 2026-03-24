@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/loading_overlay.dart';
 import '../services/auth_service.dart';
 
 class GoogleSignInButton extends StatefulWidget {
@@ -16,14 +17,29 @@ class _GoogleSignInButtonState extends State<GoogleSignInButton> {
   bool _isLoading = false;
 
   Future<void> _signInWithGoogle() async {
+    if (_isLoading) return;
+    
     setState(() => _isLoading = true);
     
+    // Mostrar loading (no lo ocultaremos hasta que la navegación ocurra)
+    LoadingOverlay.show(context, message: 'Conectando con Google...');
+    
     try {
+      // En web, esto redirige la página - no podemos esperar
       await _authService.signInWithGoogle();
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, '/main');
-      }
+      
+      // NOTA: En web, después de signInWithGoogle, la página se redirige
+      // por lo que este código puede no ejecutarse después de la redirección
+      // En móvil, esto funciona correctamente
+      
+      // No ocultamos el loading aquí porque la redirección ya ocurrió
+      // En móvil, la navegación es diferente
+      
     } catch (e) {
+      // Solo ocultamos loading si hubo error
+      LoadingOverlay.hide();
+      setState(() => _isLoading = false);
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -32,7 +48,7 @@ class _GoogleSignInButtonState extends State<GoogleSignInButton> {
                 const Icon(Icons.error_outline, color: Colors.white, size: 18),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text('Error al iniciar con Google: ${e.toString().replaceAll('Exception: ', '')}'),
+                  child: Text('Error: ${e.toString().replaceAll('Exception: ', '')}'),
                 ),
               ],
             ),
@@ -42,8 +58,6 @@ class _GoogleSignInButtonState extends State<GoogleSignInButton> {
           ),
         );
       }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -77,9 +91,8 @@ class _GoogleSignInButtonState extends State<GoogleSignInButton> {
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // TU ÍCONO DE GOOGLE ORIGINAL
                   Image.asset(
-                    'assets/icons/google.png',
+                    'assets/google.png',
                     height: 20,
                     width: 20,
                     errorBuilder: (_, __, ___) => const Icon(

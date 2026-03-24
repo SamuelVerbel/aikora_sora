@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/loading_overlay.dart';
 import 'restaurant_model.dart';
 import 'restaurants_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '/core/utils/map_launcher_service.dart';
 
-/// Pantalla de restaurantes.
-/// Tiene dos modos:
-/// - Con argumento 'destinationId': muestra solo los de ese destino.
-/// - Sin argumento: muestra todos los restaurantes.
+/// Pantalla de restaurantes premium con diseño moderno
 class RestaurantsScreen extends StatefulWidget {
   const RestaurantsScreen({super.key});
 
@@ -16,26 +15,31 @@ class RestaurantsScreen extends StatefulWidget {
   State<RestaurantsScreen> createState() => _RestaurantsScreenState();
 }
 
-class _RestaurantsScreenState extends State<RestaurantsScreen> {
+class _RestaurantsScreenState extends State<RestaurantsScreen>
+    with SingleTickerProviderStateMixin {
   final _service = RestaurantsService();
 
-  List<Restaurant> _all = [];      // Lista completa sin filtros
-  List<Restaurant> _filtered = []; // Lista que se muestra en pantalla
+  List<Restaurant> _all = [];
+  List<Restaurant> _filtered = [];
   bool _isLoading = true;
-  String _query = '';              // Texto del buscador
-  String? _selectedCuisine;       // Filtro activo de tipo de cocina
-  String? _destinationId;         // Si viene de un destino específico
-  String? _destinationName;       // Para mostrar en el AppBar
+  String _query = '';
+  String? _selectedCuisine;
+  String? _destinationId;
+  String? _destinationName;
   double? _lat;
   double? _lng;
+  late AnimationController _animationController;
 
   @override
   void initState() {
     super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final args =
-          ModalRoute.of(context)?.settings.arguments as Map?;
+      final args = ModalRoute.of(context)?.settings.arguments as Map?;
 
       if (args != null) {
         _destinationId = args['destinationId'];
@@ -48,9 +52,14 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
     });
   }
 
-  // 1. Actualiza la carga de datos para usar Google Places si hay coordenadas
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadRestaurants() async {
-    setState(() => _isLoading = true);
+    LoadingOverlay.show(context, message: 'Buscando los mejores lugares...');
 
     List<Restaurant> data;
 
@@ -71,13 +80,13 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
       _applyFilters();
       _isLoading = false;
     });
+    _animationController.forward();
+    LoadingOverlay.hide();
   }
 
-  /// Motor de filtrado: combina búsqueda de texto + tipo de cocina.
   void _applyFilters() {
     List<Restaurant> result = List.from(_all);
 
-    // Filtro por texto (nombre o tipo de cocina)
     if (_query.isNotEmpty) {
       result = result
           .where((r) =>
@@ -86,7 +95,6 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
           .toList();
     }
 
-    // Filtro por tipo de cocina seleccionado
     if (_selectedCuisine != null) {
       result = result
           .where((r) =>
@@ -97,125 +105,185 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
     _filtered = result;
   }
 
-  /// Extrae los tipos de cocina únicos para los chips de filtro.
   List<String> get _cuisines {
     final list = _all.map((r) => r.cuisine).toSet().toList();
-    list.sort(); // Orden alfabético
+    list.sort();
     return list;
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
+      backgroundColor: isDark ? const Color(0xFF070E17) : const Color(0xFFF5F7FA),
       appBar: AppBar(
-        // Título dinámico: si viene de un destino lo menciona
         title: Text(
           _destinationName != null
               ? 'Restaurantes en $_destinationName'
               : 'Restaurantes',
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                isDark ? const Color(0xFF0B1520) : Colors.white,
+                isDark ? const Color(0xFF0F1A2A) : Colors.grey[50]!,
+              ],
+            ),
+          ),
+        ),
       ),
       body: Column(
         children: [
-
-          // ── 1. Buscador de texto ──────────────────────────────────
+          // ── BUSCADOR PREMIUM ──────────────────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Buscar por nombre o cocina',
-                prefixIcon:
-                    const Icon(Icons.search, color: AppColors.accent),
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14)),
-                // Botón X para limpiar el buscador
-                suffixIcon: _query.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () => setState(() {
-                          _query = '';
-                          _applyFilters();
-                        }),
-                      )
-                    : null,
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Container(
+              decoration: BoxDecoration(
+                color: isDark ? Colors.white.withOpacity(0.05) : Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
-              onChanged: (v) => setState(() {
-                _query = v;
-                _applyFilters(); // Filtra en tiempo real
-              }),
+              child: TextField(
+                decoration: InputDecoration(
+                  hintText: 'Buscar restaurante o tipo de cocina...',
+                  hintStyle: TextStyle(
+                    color: isDark
+                        ? Colors.white.withOpacity(0.3)
+                        : Colors.grey[400],
+                  ),
+                  prefixIcon: Icon(
+                    Icons.search_rounded,
+                    color: AppColors.accent,
+                    size: 22,
+                  ),
+                  suffixIcon: _query.isNotEmpty
+                      ? IconButton(
+                          icon: Icon(Icons.clear,
+                              color: isDark
+                                  ? Colors.white.withOpacity(0.4)
+                                  : Colors.grey[500]),
+                          onPressed: () => setState(() {
+                            _query = '';
+                            _applyFilters();
+                          }),
+                        )
+                      : null,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    borderSide: BorderSide.none,
+                  ),
+                  filled: true,
+                  fillColor: Colors.transparent,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                onChanged: (v) => setState(() {
+                  _query = v;
+                  _applyFilters();
+                }),
+              ),
             ),
           ),
 
-          // ── 2. Chips de tipo de cocina (scroll horizontal) ────────
-          // Solo se muestran si hay datos cargados
+          // ── CHIPS DE COCINA PREMIUM ───────────────────────────────────
           if (_cuisines.isNotEmpty)
             SizedBox(
-              height: 48,
+              height: 52,
               child: ListView(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 children: [
-                  // Chip especial "Todas" para quitar el filtro
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: FilterChip(
-                      label: const Text('Todas'),
-                      selected: _selectedCuisine == null,
-                      selectedColor: AppColors.accent.withOpacity(0.2),
-                      checkmarkColor: AppColors.accent,
-                      onSelected: (_) => setState(() {
-                        _selectedCuisine = null;
-                        _applyFilters();
-                      }),
-                    ),
+                  _CuisineChip(
+                    label: 'Todas',
+                    isSelected: _selectedCuisine == null,
+                    onTap: () => setState(() {
+                      _selectedCuisine = null;
+                      _applyFilters();
+                    }),
                   ),
-                  // Un chip por cada tipo de cocina disponible
-                  ..._cuisines.map((c) => Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: FilterChip(
-                          label: Text(c),
-                          selected: _selectedCuisine == c,
-                          selectedColor: AppColors.accent.withOpacity(0.2),
-                          checkmarkColor: AppColors.accent,
-                          onSelected: (_) => setState(() {
-                            // Si ya estaba seleccionada la deselecciona
-                            _selectedCuisine =
-                                _selectedCuisine == c ? null : c;
-                            _applyFilters();
-                          }),
-                        ),
+                  ..._cuisines.map((c) => _CuisineChip(
+                        label: c,
+                        isSelected: _selectedCuisine == c,
+                        onTap: () => setState(() {
+                          _selectedCuisine = _selectedCuisine == c ? null : c;
+                          _applyFilters();
+                        }),
                       )),
                 ],
               ),
             ),
 
-          // ── 3. Contador de resultados ─────────────────────────────
+          // ── CONTADOR DE RESULTADOS ───────────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-            child: Row(children: [
-              Text(
-                '${_filtered.length} restaurante${_filtered.length != 1 ? "s" : ""}',
-                style: TextStyle(color: Colors.grey[500], fontSize: 13),
-              ),
-            ]),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.restaurant_outlined,
+                  size: 14,
+                  color: isDark ? Colors.white.withOpacity(0.4) : Colors.grey[500],
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  '${_filtered.length} restaurante${_filtered.length != 1 ? "s" : ""}',
+                  style: TextStyle(
+                    color: isDark ? Colors.white.withOpacity(0.5) : Colors.grey[600],
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
           ),
 
-          // ── 4. Lista de resultados ────────────────────────────────
+          // ── LISTA DE RESTAURANTES PREMIUM ────────────────────────────
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
+                ? const Center(
+                    child: CircularProgressIndicator(color: AppColors.accent),
+                  )
                 : _filtered.isEmpty
-                    ? _emptyState()
+                    ? _EmptyState(
+                        onClearFilters: () => setState(() {
+                          _query = '';
+                          _selectedCuisine = null;
+                          _applyFilters();
+                        }),
+                      )
                     : RefreshIndicator(
                         onRefresh: _loadRestaurants,
                         color: AppColors.accent,
-                        child: ListView.builder(
-                          padding:
-                              const EdgeInsets.fromLTRB(16, 4, 16, 16),
-                          itemCount: _filtered.length,
-                          itemBuilder: (_, i) =>
-                              _RestaurantCard(restaurant: _filtered[i]),
+                        child: AnimationLimiter(
+                          child: ListView.builder(
+                            padding:
+                                const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                            itemCount: _filtered.length,
+                            itemBuilder: (context, index) {
+                              return AnimationConfiguration.staggeredList(
+                                position: index,
+                                duration: const Duration(milliseconds: 500),
+                                child: SlideAnimation(
+                                  verticalOffset: 50,
+                                  child: FadeInAnimation(
+                                    child: _RestaurantCardPremium(
+                                      restaurant: _filtered[index],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
                         ),
                       ),
           ),
@@ -223,63 +291,81 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
       ),
     );
   }
+}
 
-  /// Pantalla vacía cuando no hay resultados con los filtros actuales.
-  Widget _emptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.restaurant_outlined,
-              size: 64, color: Colors.grey[300]),
-          const SizedBox(height: 16),
-          const Text('No se encontraron restaurantes',
-              style: TextStyle(
-                  fontSize: 16, fontWeight: FontWeight.w500)),
-          const SizedBox(height: 8),
-          // Botón de escape solo si hay filtros activos
-          if (_selectedCuisine != null || _query.isNotEmpty)
-            TextButton(
-              onPressed: () => setState(() {
-                _query = '';
-                _selectedCuisine = null;
-                _applyFilters();
-              }),
-              child: const Text('Limpiar filtros',
-                  style: TextStyle(color: AppColors.accent)),
-            ),
-        ],
+// ─────────────────────────────────────────────────────────────────────────────
+// CUISINE CHIP PREMIUM
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _CuisineChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _CuisineChip({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        margin: const EdgeInsets.only(right: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.accent
+              : isDark
+                  ? Colors.white.withOpacity(0.05)
+                  : Colors.grey[100],
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(
+            color: isSelected
+                ? AppColors.accent
+                : isDark
+                    ? Colors.white.withOpacity(0.1)
+                    : Colors.grey[200]!,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : AppColors.accent,
+            fontSize: 13,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+          ),
+        ),
       ),
     );
   }
 }
 
-/* =========================================================================
-   COMPONENTES LOCALES
-   ========================================================================= */
+// ─────────────────────────────────────────────────────────────────────────────
+// RESTAURANT CARD PREMIUM (SIN ADDRESS NI PHONE)
+// ─────────────────────────────────────────────────────────────────────────────
 
-/// Tarjeta horizontal para mostrar la info de un restaurante.
-class _RestaurantCard extends StatelessWidget {
+class _RestaurantCardPremium extends StatelessWidget {
   final Restaurant restaurant;
-  const _RestaurantCard({required this.restaurant});
+
+  const _RestaurantCardPremium({required this.restaurant});
 
   String get _priceLabel {
     switch (restaurant.priceRange) {
-      case 'low': return '\$';
-      case 'mid': return '\$\$';
-      case 'high': return '\$\$\$';
-      default: return restaurant.priceRange;
+      case 'low':
+        return '\$';
+      case 'mid':
+        return '\$\$';
+      case 'high':
+        return '\$\$\$';
+      default:
+        return restaurant.priceRange;
     }
-  }
-
-  Widget _placeholder() {
-    return Container(
-      width: 110,
-      height: 110,
-      color: Colors.grey[300],
-      child: Icon(Icons.restaurant_outlined,
-          color: Colors.grey[600], size: 40),
-    );
   }
 
   Future<void> _openMap() async {
@@ -287,118 +373,237 @@ class _RestaurantCard extends StatelessWidget {
       name: restaurant.name,
       lat: restaurant.latitude,
       lng: restaurant.longitude,
-      address: restaurant.address,
+      address: '', // Sin dirección por ahora
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 14),
-      shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16)),
-      elevation: 3,
-      child: Row(
-        children: [
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-          // Imagen
-          ClipRRect(
-            borderRadius:
-                const BorderRadius.horizontal(left: Radius.circular(16)),
-            child: restaurant.imageUrl.isNotEmpty
-                ? CachedNetworkImage(
-                    imageUrl: restaurant.imageUrl,
-                    width: 110,
-                    height: 130,
-                    fit: BoxFit.cover,
-                    placeholder: (_, __) => Container(
-                      width: 110,
-                      height: 130,
-                      color: Colors.grey[200],
-                      child: const Center(
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                    ),
-                    errorWidget: (_, __, ___) => _placeholder(),
-                  )
-                : _placeholder(),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF111D2E) : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
           ),
-
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-
-                  Text(
-                    restaurant.name,
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Imagen con overlay
+          Stack(
+            children: [
+              ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(24)),
+                child: restaurant.imageUrl.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: restaurant.imageUrl,
+                        height: 180,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        placeholder: (_, __) => Container(
+                          height: 180,
+                          color: Colors.grey.withOpacity(0.1),
+                          child: const Center(
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2),
+                          ),
+                        ),
+                        errorWidget: (_, __, ___) => Container(
+                          height: 180,
+                          color: Colors.grey.withOpacity(0.2),
+                          child: const Icon(Icons.restaurant_outlined,
+                              size: 50),
+                        ),
+                      )
+                    : Container(
+                        height: 180,
+                        color: Colors.grey.withOpacity(0.2),
+                        child: const Icon(Icons.restaurant_outlined,
+                            size: 50),
+                      ),
+              ),
+              // Badge de precio
+              Positioned(
+                top: 12,
+                right: 12,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.accent,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 8,
+                      ),
+                    ],
                   ),
-
-                  const SizedBox(height: 4),
-
-                  Row(children: [
-                    const Icon(Icons.restaurant_menu_outlined,
-                        size: 13, color: Colors.grey),
-                    const SizedBox(width: 4),
-                    Text(restaurant.cuisine,
-                        style: TextStyle(
-                            color: Colors.grey[600], fontSize: 13)),
-                  ]),
-
-                  const SizedBox(height: 8),
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  child: Text(
+                    _priceLabel,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
+              // Badge de rating
+              Positioned(
+                bottom: 12,
+                left: 12,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.6),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
                     children: [
-                      Row(children: [
-                        const Icon(Icons.star,
-                            color: Colors.amber, size: 15),
-                        const SizedBox(width: 3),
-                        Text(
-                          restaurant.rating.toStringAsFixed(1),
-                          style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600),
-                        ),
-                      ]),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: AppColors.accent.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          _priceLabel,
-                          style: const TextStyle(
-                              color: AppColors.accent,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13),
+                      const Icon(Icons.star,
+                          color: Colors.amber, size: 14),
+                      const SizedBox(width: 4),
+                      Text(
+                        restaurant.rating.toStringAsFixed(1),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
                   ),
+                ),
+              ),
+            ],
+          ),
 
-                  const SizedBox(height: 8),
-
-                  // 🔥 NUEVO BOTÓN MAPA
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton.icon(
-                      icon: const Icon(Icons.map_outlined, size: 18),
-                      label: const Text('Ver en mapa'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: AppColors.accent,
-                      ),
-                      onPressed: _openMap,
-                    ),
+          // Contenido
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  restaurant.name,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
                   ),
-                ],
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Icon(Icons.restaurant_menu_outlined,
+                        size: 14,
+                        color: isDark
+                            ? Colors.white.withOpacity(0.5)
+                            : Colors.grey[600]),
+                    const SizedBox(width: 6),
+                    Text(
+                      restaurant.cuisine,
+                      style: TextStyle(
+                        color: isDark
+                            ? Colors.white.withOpacity(0.6)
+                            : Colors.grey[600],
+                        fontSize: 13,
+                      ),
+                    ),
+                    const Spacer(),
+                    // Botón mapa (solo si hay coordenadas válidas)
+                    if (restaurant.latitude != 0 && restaurant.longitude != 0)
+                      TextButton.icon(
+                        onPressed: _openMap,
+                        icon: Icon(Icons.map_outlined,
+                            size: 16, color: AppColors.accent),
+                        label: Text(
+                          'Ver mapa',
+                          style: TextStyle(
+                            color: AppColors.accent,
+                            fontSize: 12,
+                          ),
+                        ),
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          minimumSize: const Size(0, 0),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EMPTY STATE PREMIUM
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _EmptyState extends StatelessWidget {
+  final VoidCallback onClearFilters;
+
+  const _EmptyState({required this.onClearFilters});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.restaurant_outlined,
+            size: 80,
+            color: isDark
+                ? Colors.white.withOpacity(0.1)
+                : Colors.grey.withOpacity(0.3),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'No se encontraron restaurantes',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: isDark ? Colors.white.withOpacity(0.7) : Colors.grey[700],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Intenta con otros filtros o palabras clave',
+            style: TextStyle(
+              fontSize: 14,
+              color: isDark ? Colors.white.withOpacity(0.4) : Colors.grey[500],
+            ),
+          ),
+          const SizedBox(height: 24),
+          OutlinedButton.icon(
+            onPressed: onClearFilters,
+            icon: const Icon(Icons.refresh_rounded, size: 18),
+            label: const Text('Limpiar filtros'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.accent,
+              side: BorderSide(color: AppColors.accent.withOpacity(0.5)),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30),
               ),
             ),
           ),

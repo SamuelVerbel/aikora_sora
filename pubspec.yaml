@@ -8,6 +8,8 @@ environment:
   sdk: ">=3.0.0 <4.0.0"
 
 dependencies:
+  google_maps_flutter: ^2.5.0
+  flutter_staggered_animations: ^1.1.1
   fl_chart: ^0.68.0
   image_picker: ^1.0.5
   http: ^1.2.1

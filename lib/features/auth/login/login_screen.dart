@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/routes/app_routes.dart';
+import '../../../core/widgets/loading_overlay.dart';
 import '../../../providers/theme_provider.dart';
 import '../services/auth_service.dart';
 import 'google_sign_in_button.dart';
@@ -52,22 +53,25 @@ class _LoginScreenState extends State<LoginScreen>
     super.dispose();
   }
 
+  // En el método _login()
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
     
-    setState(() => _isLoading = true);
+    LoadingOverlay.show(context, message: 'Verificando credenciales...');
     
     try {
-      await _authService.signInWithEmail (
+      await _authService.signInWithEmail(
         _emailController.text.trim(),
         _passwordController.text,
       );
       
+      LoadingOverlay.hide();
       if (mounted) {
         Navigator.pushReplacementNamed(context, AppRoutes.main);
         _showSnackBar('¡Bienvenido de vuelta! ✨', true);
       }
     } catch (e) {
+      LoadingOverlay.hide();
       setState(() => _isLoading = false);
       
       String errorMessage = 'Error al iniciar sesión. Verifica tus credenciales.';
