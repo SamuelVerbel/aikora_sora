@@ -113,7 +113,7 @@ class AppRoutes {
         );
 
       case planResult:
-        final args = settings.arguments as Map<String, dynamic>;
+        final args = settings.arguments as Map<String, dynamic>? ?? {};
         return MaterialPageRoute(
             builder: (_) => PlanResultScreen(args: args));
 
