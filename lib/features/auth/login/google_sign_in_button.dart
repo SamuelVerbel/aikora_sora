@@ -1,9 +1,9 @@
+// lib/features/auth/login/google_sign_in_button.dart
+
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../services/auth_service.dart';
 
-/// Botón de Google Sign In con logo real.
-/// Reutilizable en login y register.
 class GoogleSignInButton extends StatefulWidget {
   const GoogleSignInButton({super.key});
 
@@ -12,19 +12,33 @@ class GoogleSignInButton extends StatefulWidget {
 }
 
 class _GoogleSignInButtonState extends State<GoogleSignInButton> {
-  final _auth = AuthService();
+  final AuthService _authService = AuthService();
   bool _isLoading = false;
 
-  Future<void> _handleSignIn() async {
+  Future<void> _signInWithGoogle() async {
     setState(() => _isLoading = true);
+    
     try {
-      await _auth.signInWithGoogle();
+      await _authService.signInWithGoogle();
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/main');
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error con Google: $e'),
-            backgroundColor: Colors.red,
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.white, size: 18),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text('Error al iniciar con Google: ${e.toString().replaceAll('Exception: ', '')}'),
+                ),
+              ],
+            ),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
       }
@@ -36,33 +50,43 @@ class _GoogleSignInButtonState extends State<GoogleSignInButton> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
+    
     return SizedBox(
       width: double.infinity,
-      height: 54,
+      height: 52,
       child: OutlinedButton(
-        onPressed: _isLoading ? null : _handleSignIn,
+        onPressed: _isLoading ? null : _signInWithGoogle,
         style: OutlinedButton.styleFrom(
+          foregroundColor: isDark ? Colors.white : Colors.grey[800],
           side: BorderSide(
-              color: isDark ? Colors.white24 : Colors.grey.shade300),
+            color: isDark ? Colors.white.withOpacity(0.2) : Colors.grey[300]!,
+          ),
           shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16)),
+            borderRadius: BorderRadius.circular(16),
+          ),
         ),
         child: _isLoading
             ? const SizedBox(
                 width: 22,
                 height: 22,
                 child: CircularProgressIndicator(
-                    strokeWidth: 2, color: AppColors.accent),
+                  strokeWidth: 2,
+                  color: AppColors.accent,
+                ),
               )
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Logo real de Google desde assets
+                  // TU ÍCONO DE GOOGLE ORIGINAL
                   Image.asset(
-                    'assets/google.png',
-                    height: 22,
-                    width: 22,
+                    'assets/icons/google.png',
+                    height: 20,
+                    width: 20,
+                    errorBuilder: (_, __, ___) => const Icon(
+                      Icons.g_mobiledata,
+                      size: 20,
+                      color: Colors.grey,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Text(
@@ -70,7 +94,7 @@ class _GoogleSignInButtonState extends State<GoogleSignInButton> {
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w500,
-                      color: isDark ? Colors.white : Colors.black87,
+                      color: isDark ? Colors.white : Colors.grey[700],
                     ),
                   ),
                 ],

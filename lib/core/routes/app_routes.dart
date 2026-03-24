@@ -1,3 +1,5 @@
+// lib/core/routes/app_routes.dart
+
 import 'package:aikora_sora/features/admin/admin_dashboard_screen.dart';
 import 'package:aikora_sora/features/splash/splash_screen.dart';
 import 'package:flutter/material.dart';
@@ -6,6 +8,7 @@ import 'package:flutter/material.dart';
 import '../../features/auth/welcome/welcome_screen.dart';
 import '../../features/auth/login/login_screen.dart';
 import '../../features/auth/register/register_screen.dart';
+import '../../features/auth/forgot_password/forgot_password_screen.dart'; // NUEVO IMPORT
 import '../../features/auth/auth_gate.dart';
 
 // ── NAVIGATION + FEATURES ────────────────────────────────────────────────────
@@ -34,6 +37,7 @@ class AppRoutes {
   static const String welcome = '/welcome';
   static const String login = '/login';
   static const String register = '/register';
+  static const String forgotPassword = '/forgot-password';
 
   // Navegación principal
   static const String main = '/main';
@@ -52,7 +56,6 @@ class AppRoutes {
   static const String admin = '/admin';
 
   // RF-21 — Chat con Sora
-  // Acepta un Destination opcional como argumento para dar contexto al chat.
   static const String chat = '/chat';
 
   static Route<dynamic> _errorRoute() {
@@ -80,6 +83,9 @@ class AppRoutes {
 
       case register:
         return MaterialPageRoute(builder: (_) => const RegisterScreen());
+
+      case forgotPassword: // NUEVO CASE
+        return MaterialPageRoute(builder: (_) => const ForgotPasswordScreen());
 
       case main:
         return MaterialPageRoute(
@@ -131,9 +137,6 @@ class AppRoutes {
           settings: settings,
         );
 
-      // RF-21 — Chat con Sora
-      // Desde destination_detail_screen puedes navegar así:
-      // Navigator.pushNamed(context, AppRoutes.chat, arguments: destination);
       case chat:
         final dest = settings.arguments;
         return MaterialPageRoute(
