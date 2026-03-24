@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 import '../auth/services/profile_service.dart';
 import '../auth/services/preferences_service.dart';
 
@@ -19,6 +20,9 @@ class ProfileController extends ChangeNotifier {
   // ── Estado del perfil ──
   Map<String, dynamic>? _profile;
   Map<String, dynamic>? get profile => _profile;
+
+  bool _isUploadingAvatar = false;
+  bool get isUploadingAvatar => _isUploadingAvatar;
 
   bool _isLoadingProfile = true;
   bool get isLoadingProfile => _isLoadingProfile;
@@ -166,6 +170,58 @@ class ProfileController extends ChangeNotifier {
     }
   }
 
+  /// Subir avatar desde archivo local usando ProfileService
+  Future<bool> uploadAvatar(File imageFile) async {
+    final uid = userId;
+    if (uid == null) return false;
+
+    _isUploadingAvatar = true;
+    notifyListeners();
+
+    try {
+      // Obtener URL del avatar actual para eliminarlo después
+      final oldAvatarUrl = _profile?['avatar_url'];
+      
+      // Usar el nuevo método combinado del servicio
+      final success = await _profileService.updateAvatarWithFile(
+        userId: uid,
+        imageFile: imageFile,
+        oldAvatarUrl: oldAvatarUrl,
+      );
+      
+      if (success) {
+        // Recargar perfil para obtener la nueva URL
+        await _loadProfile();
+      }
+      
+      _isUploadingAvatar = false;
+      notifyListeners();
+      
+      return success;
+    } catch (e) {
+      print('Error uploading avatar: $e');
+      _isUploadingAvatar = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // Método auxiliar para recargar solo el perfil
+  Future<void> _loadProfile() async {
+    final uid = userId;
+    if (uid == null) return;
+    
+    try {
+      final profile = await _profileService.getProfile(uid);
+      if (profile != null) {
+        _profile = profile;
+        _memberSince = _computeMemberSince();
+      }
+    } catch (e) {
+      print('Error reloading profile: $e');
+    }
+  }
+
   // ── Actualizar avatar ──
 
   Future<bool> updateAvatar(String newAvatarUrl) async {
@@ -265,7 +321,16 @@ class ProfileController extends ChangeNotifier {
 
   void _checkUnsavedChanges() {
     final current = _currentPrefsSnapshot();
-    _hasUnsavedChanges = current.toString() != _savedSnapshot.toString();
+    final hasChanges = current.toString() != _savedSnapshot.toString();
+    
+    // Debug: ver qué está cambiando
+    if (hasChanges != _hasUnsavedChanges) {
+      print('Changes detected:');
+      print('Current: $current');
+      print('Saved: $_savedSnapshot');
+    }
+    
+    _hasUnsavedChanges = hasChanges;
     notifyListeners();
   }
 }

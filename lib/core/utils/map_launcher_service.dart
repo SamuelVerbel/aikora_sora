@@ -3,50 +3,59 @@ import 'package:url_launcher/url_launcher.dart';
 import 'dart:io' show Platform;
 
 class MapLauncherService {
-  static Future<void> openGoogleMaps(double lat, double lng) async {
+  /// Abre Google Maps buscando por nombre + dirección
+  static Future<void> openGoogleMapsWithName({
+    required String name,
+    required double lat,
+    required double lng,
+    String? address,
+  }) async {
+    final query = Uri.encodeComponent(
+      address != null && address.isNotEmpty ? '$name, $address' : name,
+    );
     final String googleUrl =
-        'https://www.google.com/maps/search/?api=1&query=$lat,$lng';
-    final String appleUrl = 'https://maps.apple.com/?q=$lat,$lng';
+        'https://www.google.com/maps/search/?api=1&query=$query';
 
     try {
       if (kIsWeb) {
-        // Web: abre en nueva pestaña
         await launchUrl(Uri.parse(googleUrl),
             mode: LaunchMode.externalApplication);
         return;
       }
 
       if (Platform.isAndroid) {
-        // Android: intenta abrir Google Maps nativo primero
         final Uri intentUri =
-            Uri.parse('google.navigation:q=$lat,$lng&mode=d');
+            Uri.parse('geo:$lat,$lng?q=${Uri.encodeComponent(name)}');
         if (await canLaunchUrl(intentUri)) {
           await launchUrl(intentUri);
           return;
         }
-        // Fallback: abre en navegador
         await launchUrl(Uri.parse(googleUrl),
             mode: LaunchMode.externalApplication);
         return;
       }
 
       if (Platform.isIOS) {
-        // iOS: intenta Apple Maps primero
+        final String appleUrl =
+            'https://maps.apple.com/?q=${Uri.encodeComponent(name)}&ll=$lat,$lng';
         if (await canLaunchUrl(Uri.parse(appleUrl))) {
           await launchUrl(Uri.parse(appleUrl));
           return;
         }
-        // Fallback: Google Maps en navegador
         await launchUrl(Uri.parse(googleUrl),
             mode: LaunchMode.externalApplication);
         return;
       }
 
-      // Otras plataformas (desktop, etc.)
       await launchUrl(Uri.parse(googleUrl),
           mode: LaunchMode.externalApplication);
     } catch (e) {
       debugPrint('MapLauncherService error: $e');
     }
+  }
+
+  /// Método original mantenido por compatibilidad
+  static Future<void> openGoogleMaps(double lat, double lng) async {
+    await openGoogleMapsWithName(name: 'Lugar', lat: lat, lng: lng);
   }
 }

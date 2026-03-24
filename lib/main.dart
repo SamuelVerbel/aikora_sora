@@ -37,7 +37,7 @@ class AikoraSoraApp extends StatelessWidget {
           title: 'Aikōra Sora',
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
-          themeMode: ThemeMode.system,
+          themeMode: themeProvider.themeMode,
           initialRoute: AppRoutes.splash,
           onGenerateRoute: AppRoutes.generateRoute,
         );

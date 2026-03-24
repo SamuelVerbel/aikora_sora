@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'profile_service.dart';
 
 /// Servicio que encapsula todo lo relacionado con autenticación.
 class AuthService {
@@ -8,15 +9,27 @@ class AuthService {
   /// Iniciar sesión con Google OAuth.
   Future<void> signInWithGoogle() async {
     try {
+      final redirectUrl = kIsWeb
+          ? Uri.base.origin
+          : 'com.aikorasora.app://login-callback/';
+
       await _supabase.auth.signInWithOAuth(
         OAuthProvider.google,
-        redirectTo: kIsWeb
-            ? null
-            : 'com.aikorasora.app://login-callback/',
+        redirectTo: redirectUrl,
       );
     } catch (e) {
       debugPrint('Error en Google OAuth: $e');
       rethrow;
+    }
+  }
+
+  /// Sincronizar perfil tras cualquier login — llamar desde main.dart
+  /// en el listener onAuthStateChange cuando el evento sea signedIn.
+  static Future<void> syncAfterLogin(User user) async {
+    try {
+      await ProfileService().syncProfileAfterLogin(user);
+    } catch (e) {
+      debugPrint('Error sincronizando perfil: $e');
     }
   }
 
@@ -53,6 +66,16 @@ class AuthService {
   /// Cerrar sesión.
   Future<void> signOut() async {
     await _supabase.auth.signOut();
+  }
+
+  /// Envía un correo de recuperación de contraseña
+  Future<void> resetPassword(String email) async {
+    try {
+      await _supabase.auth.resetPasswordForEmail(email);
+    } catch (e) {
+      debugPrint('Reset password error: $e');
+      throw Exception('No se pudo enviar el correo de recuperación');
+    }
   }
 
   User? get currentUser => _supabase.auth.currentUser;

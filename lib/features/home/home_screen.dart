@@ -48,15 +48,38 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final user = _supabase.auth.currentUser;
       if (user == null) return;
-      final profile = await ProfileService().getProfile(user.id);
-      if (mounted && profile != null) {
+
+      // Sincronizar perfil primero (escribe nombre/avatar de Google si faltan)
+      await ProfileService().syncProfileAfterLogin(user);
+
+      Map<String, dynamic>? profile = await ProfileService().getProfile(user.id);
+
+      // Si full_name sigue vacío, usar metadata de Auth directamente
+      String? name = profile?['full_name'];
+      if (name == null || name.isEmpty || name == 'Usuario') {
+        final meta = user.userMetadata ?? {};
+        name = meta['name'] ?? meta['full_name'] ?? meta['email']?.split('@').first;
+      }
+
+      if (mounted) {
         setState(() {
-          userName = profile['full_name']?.split(' ')[0] ?? 'Viajero';
-          userAvatar = profile['avatar_url'];
+          userName = name?.split(' ')[0] ?? 'Viajero';
+          userAvatar = profile?['avatar_url']
+              ?? user.userMetadata?['avatar_url']
+              ?? user.userMetadata?['picture'];
         });
       }
     } catch (e) {
       debugPrint('Error cargando perfil: $e');
+      // Fallback a metadata de Auth sin BD
+      final meta = _supabase.auth.currentUser?.userMetadata ?? {};
+      if (mounted) {
+        setState(() {
+          userName = (meta['name'] ?? meta['full_name'] ?? 'Viajero')
+              .toString().split(' ')[0];
+          userAvatar = meta['avatar_url'] ?? meta['picture'];
+        });
+      }
     }
   }
 
@@ -65,7 +88,6 @@ class _HomeScreenState extends State<HomeScreen> {
       final all = await _repository.getDestinations();
       if (mounted) {
         setState(() {
-          // Top 5 por rating
           _featured = (List<Destination>.from(all)
                 ..sort((a, b) => b.rating.compareTo(a.rating)))
               .take(5)
@@ -81,7 +103,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    // Límite de ancho para web — centrado como app empresarial
     final isWide = MediaQuery.of(context).size.width > 700;
     final maxWidth = isWide ? 700.0 : double.infinity;
 
@@ -156,7 +177,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: _QuickAction(
                           icon: Icons.bookmark_outline,
                           label: 'Mis Reservas',
-                          color: Colors.orange,
+                          // FIX: color adaptable al tema — en claro usa accent
+                          // para que sea legible sobre fondo casi blanco
+                          color: isDark ? Colors.orange : AppColors.accent,
                           onTap: () =>
                               Navigator.pushNamed(context, AppRoutes.reservations),
                         ),
@@ -167,6 +190,8 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
 
               // ── CATEGORÍAS ─────────────────────────────────────────────
+              // FIX: en web (isWide) usamos Wrap en lugar de ListView horizontal
+              // para evitar overflow cuando el contenedor ya está constrainado a 700px
               SliverToBoxAdapter(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -175,26 +200,46 @@ class _HomeScreenState extends State<HomeScreen> {
                       padding: EdgeInsets.fromLTRB(24, 28, 24, 16),
                       child: SectionTitle(title: 'Categorías'),
                     ),
-                    SizedBox(
-                      height: 100,
-                      child: ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        scrollDirection: Axis.horizontal,
-                        itemCount: _categories.length,
-                        itemBuilder: (context, index) {
-                          final cat = _categories[index];
-                          return _CategoryItem(
-                            icon: cat['icon'],
-                            label: cat['label'],
-                            onTap: () => Navigator.pushNamed(
-                              context,
-                              AppRoutes.explore,
-                              arguments: {'category': cat['tag']},
+                    isWide
+                        ? Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: _categories
+                                  .map((cat) => _CategoryItem(
+                                        icon: cat['icon'],
+                                        label: cat['label'],
+                                        onTap: () => Navigator.pushNamed(
+                                          context,
+                                          AppRoutes.explore,
+                                          arguments: {'category': cat['tag']},
+                                        ),
+                                      ))
+                                  .toList(),
                             ),
-                          );
-                        },
-                      ),
-                    ),
+                          )
+                        : SizedBox(
+                            height: 100,
+                            child: ListView.builder(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
+                              scrollDirection: Axis.horizontal,
+                              itemCount: _categories.length,
+                              itemBuilder: (context, index) {
+                                final cat = _categories[index];
+                                return _CategoryItem(
+                                  icon: cat['icon'],
+                                  label: cat['label'],
+                                  onTap: () => Navigator.pushNamed(
+                                    context,
+                                    AppRoutes.explore,
+                                    arguments: {'category': cat['tag']},
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
                   ],
                 ),
               ),
@@ -284,7 +329,7 @@ class _CategoryItem extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 86,
+        width: 92,
         margin: const EdgeInsets.symmetric(horizontal: 6),
         child: Column(
           children: [
@@ -312,7 +357,7 @@ class _CategoryItem extends StatelessWidget {
                 color: theme.colorScheme.onSurface,
               ),
               textAlign: TextAlign.center,
-              maxLines: 1,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
           ],
@@ -342,9 +387,9 @@ class _QuickAction extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 18),
         decoration: BoxDecoration(
-          color: color.withOpacity(isDark ? 0.15 : 0.08),
+          color: color.withOpacity(isDark ? 0.15 : 0.10),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: color.withOpacity(0.2)),
+          border: Border.all(color: color.withOpacity(isDark ? 0.2 : 0.25)),
         ),
         child: Column(
           children: [
@@ -353,7 +398,11 @@ class _QuickAction extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                  color: color, fontWeight: FontWeight.bold, fontSize: 12),
+                  // FIX: en modo claro el texto usa el mismo color del ícono
+                  // para asegurar contraste sobre fondo casi blanco
+                  color: color,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12),
             ),
           ],
         ),
@@ -370,6 +419,7 @@ class _FeaturedCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return GestureDetector(
       onTap: onTap,
       child: Card(
@@ -391,14 +441,16 @@ class _FeaturedCard extends StatelessWidget {
                   fit: BoxFit.cover,
                   placeholder: (_, __) => Container(
                     height: 180,
-                    color: Colors.grey[200],
+                    color: theme.colorScheme.surfaceContainerHighest,
                     child: const Center(
                         child: CircularProgressIndicator(strokeWidth: 2)),
                   ),
                   errorWidget: (_, __, ___) => Container(
                     height: 180,
-                    color: Colors.grey[300],
-                    child: const Icon(Icons.image_not_supported, size: 40),
+                    color: theme.colorScheme.surfaceContainerHighest,
+                    child: Icon(Icons.image_not_supported,
+                        size: 40,
+                        color: theme.colorScheme.onSurface.withOpacity(0.3)),
                   ),
                 ),
               ),
@@ -420,13 +472,17 @@ class _FeaturedCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis),
                         const SizedBox(height: 4),
                         Row(children: [
-                          const Icon(Icons.location_on_outlined,
-                              size: 13, color: Colors.grey),
+                          Icon(Icons.location_on_outlined,
+                              size: 13,
+                              color: theme.colorScheme.onSurface
+                                  .withOpacity(0.45)),
                           const SizedBox(width: 3),
                           Text(
                             '${destination.city}, ${destination.country}',
                             style: TextStyle(
-                                color: Colors.grey[500], fontSize: 12),
+                                color: theme.colorScheme.onSurface
+                                    .withOpacity(0.5),
+                                fontSize: 12),
                           ),
                         ]),
                       ],

@@ -10,11 +10,17 @@ class RestaurantsService {
   final String _apiKey = Env.googleMapsApiKey;
 
   /// Busca restaurantes reales en Google Places usando coordenadas.
+  /// Si falla o la key no está configurada, usa Supabase como respaldo.
   Future<List<Restaurant>> getRealTimeRestaurants({
     required double lat,
     required double lng,
     required String destinationId,
   }) async {
+    // Si no hay key válida, usar Supabase directamente
+    if (_apiKey.isEmpty || _apiKey == 'tu_key') {
+      return getByDestination(destinationId);
+    }
+
     try {
       final url = Uri.parse(
         'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
@@ -28,11 +34,27 @@ class RestaurantsService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final List results = data['results'] ?? [];
 
-        return results.map((place) {
-          String photoUrl =
-              'https://via.placeholder.com/400x300?text=Aikora+Sora';
+        // Si Google retorna error de key inválida, usar Supabase
+        if (data['status'] == 'REQUEST_DENIED' ||
+            data['status'] == 'INVALID_REQUEST') {
+          debugPrint('Google Places key inválida, usando Supabase...');
+          return getByDestination(destinationId);
+        }
+
+        final List results = data['results'] ?? [];
+        if (results.isEmpty) return getByDestination(destinationId);
+
+        // Deduplicar por place_id
+        final seen = <String>{};
+        final restaurants = <Restaurant>[];
+
+        for (final place in results) {
+          final placeId = place['place_id'] ?? '';
+          if (placeId.isEmpty || seen.contains(placeId)) continue;
+          seen.add(placeId);
+
+          String photoUrl = '';
           if (place['photos'] != null &&
               (place['photos'] as List).isNotEmpty) {
             final photoRef = place['photos'][0]['photo_reference'];
@@ -41,14 +63,20 @@ class RestaurantsService {
                 '?maxwidth=400&photoreference=$photoRef&key=$_apiKey';
           }
 
-          return Restaurant(
-            id: place['place_id'] ?? '',
+          // Detectar tipo de cocina más específico
+          final types = List<String>.from(place['types'] ?? []);
+          String cuisine = 'Restaurante';
+          if (types.contains('cafe')) cuisine = 'Café';
+          else if (types.contains('bar')) cuisine = 'Bar';
+          else if (types.contains('bakery')) cuisine = 'Panadería';
+          else if (types.contains('meal_takeaway')) cuisine = 'Para llevar';
+
+          restaurants.add(Restaurant(
+            id: placeId,
             destinationId: destinationId,
             name: place['name'] ?? 'Restaurante',
-            cuisine: (place['types'] as List).contains('cafe')
-                ? 'Café'
-                : 'Restaurante',
-            priceRange: (place['price_level'] ?? 2).toString(),
+            cuisine: cuisine,
+            priceRange: _priceLevel(place['price_level']),
             rating: (place['rating'] ?? 0.0).toDouble(),
             imageUrl: photoUrl,
             latitude:
@@ -56,15 +84,29 @@ class RestaurantsService {
             longitude:
                 (place['geometry']['location']['lng'] ?? 0).toDouble(),
             isExternal: true,
-            address: place['vicinity'],
-          );
-        }).toList();
+            address: place['vicinity'] ?? '',
+          ));
+        }
+
+        return restaurants;
       }
 
       return getByDestination(destinationId);
     } catch (e) {
-      debugPrint('Error en Google Places: $e. Usando respaldo de Supabase...');
+      debugPrint('Error en Google Places: $e. Usando Supabase...');
       return getByDestination(destinationId);
+    }
+  }
+
+  /// Convierte el nivel de precio numérico a símbolo de dólares
+  String _priceLevel(dynamic level) {
+    switch (level) {
+      case 0: return 'free';
+      case 1: return 'low';
+      case 2: return 'mid';
+      case 3: return 'high';
+      case 4: return 'high';
+      default: return 'mid';
     }
   }
 
