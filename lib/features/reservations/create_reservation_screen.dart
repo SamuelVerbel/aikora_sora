@@ -146,10 +146,11 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: theme.scaffoldBackgroundColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: EdgeInsets.only(
         left: 24,
@@ -168,7 +169,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey[300],
+                  color: Colors.grey.withOpacity(0.4),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -253,7 +254,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                   Row(children: [
                     IconButton(
                       icon: const Icon(Icons.remove_circle_outline),
-                      color: _travelers > 1 ? AppColors.accent : Colors.grey[300],
+                      color: _travelers > 1 ? AppColors.accent : Colors.grey.withOpacity(0.4),
                       onPressed:
                           _travelers > 1 ? () => setState(() => _travelers--) : null,
                     ),
@@ -385,7 +386,7 @@ class _DateButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         decoration: BoxDecoration(
-          color: hasDate ? AppColors.accent.withOpacity(0.07) : Colors.grey[50],
+          color: hasDate ? AppColors.accent.withOpacity(0.07) : Colors.grey.withOpacity(0.08),
           border: Border.all(
             color: hasDate ? AppColors.accent : Colors.grey.shade300,
           ),
@@ -410,7 +411,7 @@ class _DateButton extends StatelessWidget {
               date ?? 'Seleccionar',
               style: TextStyle(
                 fontSize: 13,
-                color: hasDate ? Colors.black87 : Colors.grey[400],
+                color: hasDate ? null : Colors.grey[500],
               ),
             ),
           ],

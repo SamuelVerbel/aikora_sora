@@ -34,6 +34,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   bool _isLoading = true;
   String _query = '';
+  
+  // FIX: Controlar visibilidad de la sección de recomendados
+  bool _hasRecommendations = false;
 
   Position? _userPosition;
   bool _sortByDistance = false;
@@ -47,7 +50,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   Future<void> _loadSavedFilters() async {
     final prefs = await PreferencesService.loadPreferences();
     setState(() {
-      _maxPrice = prefs['budget'];
+      _maxPrice = (prefs['budget'] ?? 5000.0).toDouble();
       _selectedClimate = prefs['climate'] == 'Todos' ? null : prefs['climate'];
     });
   }
@@ -74,25 +77,50 @@ class _ExploreScreenState extends State<ExploreScreen> {
   Future<void> _loadDestinations() async {
     setState(() => _isLoading = true);
 
-    final data = await _repository.getDestinations();
-    final engine = RecommendationEngine();
-    final ranked = await engine.rankDestinations(data);
-    final recommended = await engine.getTopRecommendations(data);
-    final preferredType = await engine.getUserPreferredCategory();
+    try {
+      // 1. Intentar obtener datos de la red
+      final data = await _repository.getDestinations();
+      
+      // 2. RF-11: Guardar en local apenas descargue
+      await PreferencesService.saveDestinationsCache(data);
 
-    if (mounted) {
-      setState(() {
-        _allDestinations = ranked;
-        _recommendedDestinations = recommended;
+      final engine = RecommendationEngine();
+      final recommended = await engine.getTopRecommendations(data);
+      final preferredType = await engine.getUserPreferredCategory();
 
-        // FIX 1: título dinámico correctamente asignado a la variable de estado
-        _recommendationTitle = preferredType != null
-            ? "✨ Porque te gustan los destinos $preferredType"
-            : "✨ Recomendado para ti";
-
-        _applyFilters();
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _allDestinations = data;
+          _recommendedDestinations = recommended;
+          // FIX: Solo mostrar recomendados si hay al menos 2 destinos
+          _hasRecommendations = recommended.isNotEmpty && recommended.length >= 2;
+          _recommendationTitle = preferredType != null
+              ? "✨ Porque te gustan los destinos $preferredType"
+              : "✨ Recomendado para ti";
+          _applyFilters();
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error de red, cargando caché local: $e');
+      
+      // 3. Fallback: Cargar del disco si no hay internet (Resiliencia Premium)
+      final cachedData = await PreferencesService.loadDestinationsCache();
+      
+      if (mounted) {
+        setState(() {
+          _allDestinations = cachedData;
+          _hasRecommendations = false; // En offline no mostrar recomendados
+          _applyFilters(); // Aplicar filtros sobre los datos cacheados
+          _isLoading = false;
+        });
+        
+        if (cachedData.isNotEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Modo offline: Cargando información guardada')),
+          );
+        }
+      }
     }
   }
 
@@ -280,26 +308,28 @@ class _ExploreScreenState extends State<ExploreScreen> {
           if (_sortByDistance || _categoryFilter != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-              child: Row(children: [
-                if (_sortByDistance)
-                  _FilterChip(
-                    label: '📍 Cerca de mí',
-                    onRemove: () => setState(() {
-                      _sortByDistance = false;
-                      _applyFilters();
-                    }),
-                  ),
-                if (_categoryFilter != null) ...[
-                  const SizedBox(width: 8),
-                  _FilterChip(
-                    label: '🏷️ $_categoryFilter',
-                    onRemove: () => setState(() {
-                      _categoryFilter = null;
-                      _applyFilters();
-                    }),
-                  ),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  if (_sortByDistance)
+                    _FilterChip(
+                      label: '📍 Cerca de mí',
+                      onRemove: () => setState(() {
+                        _sortByDistance = false;
+                        _applyFilters();
+                      }),
+                    ),
+                  if (_categoryFilter != null)
+                    _FilterChip(
+                      label: '🏷️ $_categoryFilter',
+                      onRemove: () => setState(() {
+                        _categoryFilter = null;
+                        _applyFilters();
+                      }),
+                    ),
                 ],
-              ]),
+              ),
             ),
 
           // Contador de resultados
@@ -315,46 +345,52 @@ class _ExploreScreenState extends State<ExploreScreen> {
             ),
           ),
 
-          // Sección Recomendados por IA
-          if (_recommendedDestinations.isNotEmpty)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                  // FIX 1: sin const para poder usar la variable _recommendationTitle
-                  child: Text(
-                    _recommendationTitle,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+          // FIX: Sección Recomendados por IA - Mejorada visualmente
+          if (_hasRecommendations && _recommendedDestinations.isNotEmpty && !_isLoading)
+            Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                    child: Text(
+                      _recommendationTitle,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                ),
-                SizedBox(
-                  height: 320,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: _recommendedDestinations.length,
-                    itemBuilder: (context, index) {
-                      final destination = _recommendedDestinations[index];
-                      return SizedBox(
-                        width: 260,
-                        child: DestinationCard(
-                          destination: destination,
-                          userPosition: _userPosition,
-                          // FIX: prefijo 'rec_' evita Hero duplicado con la lista principal
-                          heroPrefix: 'rec_',
-                        ),
-                      );
-                    },
+                  SizedBox(
+                    height: 280, // FIX: Altura reducida para mejor visualización
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      itemCount: _recommendedDestinations.length,
+                      itemBuilder: (context, index) {
+                        final destination = _recommendedDestinations[index];
+                        return Container(
+                          width: 260,
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          child: DestinationCard(
+                            destination: destination,
+                            userPosition: _userPosition,
+                            heroPrefix: 'rec_',
+                            compact: true, // FIX: Modo compacto para recomendados
+                          ),
+                        );
+                      },
+                    ),
                   ),
-                ),
-              ],
+                  // FIX: Separador sutil entre secciones
+                  const Divider(height: 24, thickness: 1, indent: 16, endIndent: 16),
+                ],
+              ),
             ),
 
-          // Lista de resultados
+          // Lista de resultados - FIX: Mejor manejo del espacio
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
@@ -364,12 +400,16 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         onRefresh: _loadDestinations,
                         color: AppColors.accent,
                         child: ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                           itemCount: _filtered.length,
                           cacheExtent: 800,
-                          itemBuilder: (_, i) => DestinationCard(
-                            destination: _filtered[i],
-                            userPosition: _userPosition,
+                          itemBuilder: (_, i) => Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: DestinationCard(
+                              destination: _filtered[i],
+                              userPosition: _userPosition,
+                              compact: false,
+                            ),
                           ),
                         ),
                       ),
@@ -496,7 +536,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.search_off, size: 64, color: Colors.grey[300]),
+          Icon(Icons.search_off, size: 64, color: Colors.grey.withOpacity(0.35)),
           const SizedBox(height: 16),
           const Text('No se encontraron destinos',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
@@ -558,12 +598,14 @@ class DestinationCard extends StatelessWidget {
   final Destination destination;
   final Position? userPosition;
   final String heroPrefix;
+  final bool compact; // FIX: Modo compacto para cards de recomendados
 
   const DestinationCard({
     super.key,
     required this.destination,
     this.userPosition,
     this.heroPrefix = '',
+    this.compact = false,
   });
 
   @override
@@ -581,10 +623,17 @@ class DestinationCard extends StatelessWidget {
       distanceLabel = LocationService.formatDistance(km);
     }
 
+    // FIX: Altura de imagen dinámica según modo compacto
+    final imageHeight = compact ? 140.0 : 200.0;
+    final padding = compact ? const EdgeInsets.all(12) : const EdgeInsets.all(16);
+    final titleStyle = compact 
+        ? const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)
+        : const TextStyle(fontSize: 20, fontWeight: FontWeight.bold);
+
     return Card(
-      margin: const EdgeInsets.only(bottom: 18),
+      margin: compact ? EdgeInsets.zero : const EdgeInsets.only(bottom: 18),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      elevation: 4,
+      elevation: compact ? 2 : 4,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -594,25 +643,25 @@ class DestinationCard extends StatelessWidget {
               tag: '$heroPrefix${destination.id}',
               child: CachedNetworkImage(
                 imageUrl: destination.mainImage,
-                height: 200,
+                height: imageHeight,
                 width: double.infinity,
                 fit: BoxFit.cover,
                 placeholder: (context, url) => Container(
-                  height: 200,
-                  color: Colors.grey[200],
+                  height: imageHeight,
+                  color: Colors.grey.withOpacity(0.12),
                   child: const Center(
                       child: CircularProgressIndicator(strokeWidth: 2)),
                 ),
                 errorWidget: (context, url, error) => Container(
-                  height: 200,
-                  color: Colors.grey[300],
+                  height: imageHeight,
+                  color: Colors.grey.withOpacity(0.2),
                   child: const Icon(Icons.image_not_supported, size: 40),
                 ),
               ),
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: padding,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -621,10 +670,9 @@ class DestinationCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(destination.title,
-                          style: const TextStyle(
-                              fontSize: 20, fontWeight: FontWeight.bold)),
+                          style: titleStyle, maxLines: 1, overflow: TextOverflow.ellipsis),
                     ),
-                    if (distanceLabel != null)
+                    if (distanceLabel != null && !compact) // FIX: Solo mostrar distancia si no es compacto
                       Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 4),
@@ -650,19 +698,24 @@ class DestinationCard extends StatelessWidget {
                   const Icon(Icons.location_on_outlined,
                       size: 14, color: Colors.grey),
                   const SizedBox(width: 3),
-                  Text('${destination.city}, ${destination.country}',
-                      style: TextStyle(color: Colors.grey[600])),
+                  Expanded(
+                    child: Text('${destination.city}, ${destination.country}',
+                        style: TextStyle(color: Colors.grey[600], fontSize: compact ? 12 : 13),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis),
+                  ),
                 ]),
                 const SizedBox(height: 8),
-                Text(destination.description,
-                    maxLines: 2, overflow: TextOverflow.ellipsis),
+                if (!compact) // FIX: Solo mostrar descripción si no es compacto
+                  Text(destination.description,
+                      maxLines: 2, overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 10),
                 Row(children: [
                   const Icon(Icons.star, color: Colors.amber, size: 16),
                   const SizedBox(width: 4),
                   Text(
                     '${destination.rating} (${destination.reviews} reseñas)',
-                    style: const TextStyle(fontSize: 13),
+                    style: TextStyle(fontSize: compact ? 12 : 13),
                   ),
                 ]),
                 const SizedBox(height: 14),
@@ -672,14 +725,15 @@ class DestinationCard extends StatelessWidget {
                     style: ElevatedButton.styleFrom(
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14)),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      padding: EdgeInsets.symmetric(vertical: compact ? 10 : 14),
+                      minimumSize: const Size(0, 0),
                     ),
                     onPressed: () => Navigator.pushNamed(
                       context,
                       AppRoutes.destinationDetail,
                       arguments: destination,
                     ),
-                    child: const Text('Ver más'),
+                    child: Text(compact ? 'Ver' : 'Ver más'),
                   ),
                 ),
               ],

@@ -19,9 +19,9 @@ class AdminService {
           .from('profiles')
           .select('role')
           .eq('id', userId)
-          .single();
+          .maybeSingle();
 
-      return response['role'] == 'admin';
+      return response?['role'] == 'admin';
     } catch (e) {
       debugPrint('AdminService.isAdmin error: $e');
       return false;

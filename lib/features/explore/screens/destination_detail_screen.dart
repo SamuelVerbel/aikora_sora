@@ -57,6 +57,15 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
     return images.take(6).toList();
   }
 
+  void _openSoraChat() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChatScreen(destination: widget.destination),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final images = _allImages;
@@ -68,7 +77,7 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
       body: Stack(
         children: [
 
-          // ── SLIDER DE IMÁGENES ───────────────────────────────────────────
+          // ── SLIDER DE IMÁGENES ─────────────────────────────────────────
           SizedBox(
             height: 360,
             width: double.infinity,
@@ -102,21 +111,22 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
                               fit: BoxFit.cover,
                               width: double.infinity,
                               placeholder: (context, url) => Container(
-                                color: Colors.grey[200],
+                                color: Colors.grey.withOpacity(0.12),
                                 child: const Center(
                                   child: CircularProgressIndicator(
                                       strokeWidth: 2),
                                 ),
                               ),
-                              errorWidget: (context, url, error) => Container(
-                                color: Colors.grey[300],
+                              errorWidget: (context, url, error) =>
+                                  Container(
+                                color: Colors.grey.withOpacity(0.2),
                                 child: const Icon(
                                     Icons.image_not_supported,
                                     size: 60),
                               ),
                             )
                           : Container(
-                              color: Colors.grey[300],
+                              color: Colors.grey.withOpacity(0.2),
                               child: const Icon(Icons.image_not_supported,
                                   size: 60),
                             ),
@@ -138,7 +148,7 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
                   ),
                 ),
 
-                // Título y ubicación
+                // Título y ubicación sobre el gradiente
                 Positioned(
                   bottom: 44, left: 24, right: 24,
                   child: Column(
@@ -147,9 +157,12 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
                       Text(
                         dest.title,
                         style: const TextStyle(
-                          color: Colors.white, fontSize: 26,
+                          color: Colors.white,
+                          fontSize: 26,
                           fontWeight: FontWeight.bold,
-                          shadows: [Shadow(blurRadius: 4, color: Colors.black45)],
+                          shadows: [
+                            Shadow(blurRadius: 4, color: Colors.black45)
+                          ],
                         ),
                       ),
                       const SizedBox(height: 6),
@@ -177,10 +190,14 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
                         final isActive = i == _currentSlide;
                         return AnimatedContainer(
                           duration: const Duration(milliseconds: 250),
-                          margin: const EdgeInsets.symmetric(horizontal: 3),
-                          width: isActive ? 20 : 7, height: 7,
+                          margin:
+                              const EdgeInsets.symmetric(horizontal: 3),
+                          width: isActive ? 20 : 7,
+                          height: 7,
                           decoration: BoxDecoration(
-                            color: isActive ? Colors.white : Colors.white54,
+                            color: isActive
+                                ? Colors.white
+                                : Colors.white54,
                             borderRadius: BorderRadius.circular(4),
                           ),
                         );
@@ -202,7 +219,8 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
                       child: Text(
                         '${_currentSlide + 1} / ${images.length}',
                         style: const TextStyle(
-                          color: Colors.white, fontSize: 12,
+                          color: Colors.white,
+                          fontSize: 12,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -212,12 +230,12 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
             ),
           ),
 
-          // ── BOTÓN VOLVER ─────────────────────────────────────────────────
+          // ── BOTÓN VOLVER ───────────────────────────────────────────────
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: CircleAvatar(
-                backgroundColor: Colors.black.withOpacity(0.5),
+                backgroundColor: Colors.black.withValues(alpha: 0.5),
                 child: IconButton(
                   icon: const Icon(Icons.arrow_back, color: Colors.white),
                   onPressed: () => Navigator.pop(context),
@@ -226,22 +244,38 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
             ),
           ),
 
-          // ── BOTÓN CHAT SORA (esquina superior derecha) ───────────────────
+          // ── BOTÓN SORA — único, esquina superior derecha ───────────────
+          // RF-21: abre ChatScreen con contexto del destino precargado.
           SafeArea(
             child: Align(
               alignment: Alignment.topRight,
               child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: CircleAvatar(
-                  backgroundColor: AppColors.accent.withOpacity(0.85),
-                  child: IconButton(
-                    tooltip: 'Preguntarle a Sora',
-                    icon: const Icon(Icons.chat_bubble_outline_rounded,
-                        color: Colors.white),
-                    onPressed: () => Navigator.pushNamed(
-                      context,
-                      AppRoutes.chat,
-                      arguments: dest,
+                padding: const EdgeInsets.only(top: 8, right: 16),
+                child: GestureDetector(
+                  onTap: _openSoraChat,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.55),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                          color: AppColors.accent.withValues(alpha: 0.6)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('✨', style: TextStyle(fontSize: 14)),
+                        SizedBox(width: 5),
+                        Text(
+                          'Preguntarle a Sora',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -249,8 +283,7 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
             ),
           ),
 
-          // ── CONTENIDO DESLIZABLE ─────────────────────────────────────────
-          // FIX: usa theme.scaffoldBackgroundColor en lugar de Colors.white
+          // ── CONTENIDO DESLIZABLE ───────────────────────────────────────
           Container(
             margin: const EdgeInsets.only(top: 310),
             decoration: BoxDecoration(
@@ -269,9 +302,11 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Row(children: [
-                        const Icon(Icons.star, color: Colors.amber, size: 20),
+                        const Icon(Icons.star,
+                            color: Colors.amber, size: 20),
                         const SizedBox(width: 6),
-                        Text('${dest.rating} (${dest.reviews} reseñas)',
+                        Text(
+                            '${dest.rating} (${dest.reviews} reseñas)',
                             style: const TextStyle(fontSize: 14)),
                       ]),
                       if (dest.priceMin > 0)
@@ -279,7 +314,7 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
-                            color: AppColors.accent.withOpacity(0.1),
+                            color: AppColors.accent.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
@@ -301,9 +336,8 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        // FIX: adapta al tema oscuro
                         color: isDark
-                            ? Colors.white.withOpacity(0.05)
+                            ? Colors.white.withValues(alpha: 0.05)
                             : Colors.grey[50],
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
@@ -346,7 +380,8 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
                           fontSize: 18, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 10),
                   Text(dest.description,
-                      style: const TextStyle(fontSize: 16, height: 1.6)),
+                      style:
+                          const TextStyle(fontSize: 16, height: 1.6)),
 
                   const SizedBox(height: 24),
 
@@ -362,9 +397,8 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
                       children: dest.tags
                           .map((tag) => Chip(
                                 label: Text(tag),
-                                // FIX: accent en lugar de primary
                                 backgroundColor:
-                                    AppColors.accent.withOpacity(0.1),
+                                    AppColors.accent.withValues(alpha: 0.1),
                                 labelStyle: const TextStyle(
                                     color: AppColors.accent, fontSize: 13),
                                 side: BorderSide.none,
@@ -394,7 +428,7 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
         ],
       ),
 
-      // ── BOTONES INFERIORES ───────────────────────────────────────────────
+      // ── BOTONES INFERIORES ─────────────────────────────────────────────
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
         child: Column(
@@ -412,7 +446,8 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
                 icon: const Icon(Icons.restaurant_menu,
                     color: AppColors.accent),
                 label: const Text('Ver Restaurantes',
-                    style: TextStyle(color: AppColors.accent, fontSize: 15)),
+                    style: TextStyle(
+                        color: AppColors.accent, fontSize: 15)),
                 onPressed: () {
                   Navigator.pushNamed(
                     context,
@@ -441,10 +476,11 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
                     icon: const Icon(Icons.auto_awesome,
                         color: AppColors.accent),
                     label: const Text('Planear con IA',
-                        style:
-                            TextStyle(color: AppColors.accent, fontSize: 15)),
+                        style: TextStyle(
+                            color: AppColors.accent, fontSize: 15)),
                     onPressed: () {
-                      Navigator.pushNamed(context, '/plan', arguments: dest);
+                      Navigator.pushNamed(context, '/plan',
+                          arguments: dest);
                     },
                   ),
                 ),
@@ -460,7 +496,8 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
                     icon: const Icon(Icons.bookmark_add_outlined,
                         color: Colors.white),
                     label: const Text('Reservar',
-                        style: TextStyle(fontSize: 15, color: Colors.white)),
+                        style: TextStyle(
+                            fontSize: 15, color: Colors.white)),
                     onPressed: () {
                       showModalBottomSheet(
                         context: context,
