@@ -1,4 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+
+import '../../explore/models/destination_model.dart';
 
 class PreferencesService {
   // Preferencias principales
@@ -14,6 +17,7 @@ class PreferencesService {
   // IA y filtros (RF-06)
   static const _keyMinRating = 'min_rating';
   static const _keyClimate = 'preferred_climate';
+  static const _keyDestinationsCache = 'destinations_cache';
 
   /// Guarda TODO el perfil (ProfileScreen)
   static Future<void> savePreferences({
@@ -69,5 +73,19 @@ class PreferencesService {
       'minRating': prefs.getDouble(_keyMinRating) ?? 0.0,
       'climate': prefs.getString(_keyClimate) ?? 'Todos',
     };
+  }
+
+  static Future<void> saveDestinationsCache(List<Destination> destinations) async {
+    final prefs = await SharedPreferences.getInstance();
+    final String encodedData = jsonEncode(destinations.map((d) => d.toJson()).toList());
+    await prefs.setString(_keyDestinationsCache, encodedData);
+  }
+
+  static Future<List<Destination>> loadDestinationsCache() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? encodedData = prefs.getString(_keyDestinationsCache);
+    if (encodedData == null) return [];
+    final List<dynamic> decodedData = jsonDecode(encodedData);
+    return decodedData.map((item) => Destination.fromJson(item)).toList();
   }
 }

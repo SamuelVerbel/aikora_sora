@@ -22,31 +22,47 @@ class ProfileSectionTitle extends StatelessWidget {
   }
 }
 
-/// Card contenedora para secciones de configuración.
+/// Card contenedora para secciones de configuración con efecto glassmorphism.
 class SettingsCard extends StatelessWidget {
   final List<Widget> children;
-  const SettingsCard({super.key, required this.children});
+  final bool glassEffect;
+
+  const SettingsCard({
+    super.key,
+    required this.children,
+    this.glassEffect = true,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(18),
+        color: glassEffect
+            ? (isDark ? Colors.white.withOpacity(0.05) : Colors.white)
+            : Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(24),
+        border: glassEffect && isDark
+            ? Border.all(color: Colors.white.withOpacity(0.1), width: 0.5)
+            : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withAlpha(13),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+            color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+            blurRadius: 15,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Column(children: children),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Column(children: children),
+      ),
     );
   }
 }
 
-/// Tile de preferencia con switch.
+/// Tile de preferencia con switch y animación mejorada.
 class PrefTile extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -63,28 +79,43 @@ class PrefTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SwitchListTile(
-      secondary: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: value
-              ? AppColors.accent.withAlpha(31)
-              : Colors.grey.withAlpha(20),
-          borderRadius: BorderRadius.circular(10),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      child: SwitchListTile(
+        secondary: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            gradient: value
+                ? LinearGradient(
+                    colors: [
+                      AppColors.accent.withOpacity(0.2),
+                      AppColors.accent.withOpacity(0.1),
+                    ],
+                  )
+                : null,
+            color: value ? null : Colors.grey.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Icon(
+            icon,
+            color: value ? AppColors.accent : Colors.grey,
+            size: 22,
+          ),
         ),
-        child: Icon(
-          icon,
-          color: value ? AppColors.accent : Colors.grey,
-          size: 20,
+        title: Text(
+          label,
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 15,
+            color: value ? AppColors.accent : null,
+          ),
         ),
+        value: value,
+        activeColor: AppColors.accent,
+        activeTrackColor: AppColors.accent.withOpacity(0.3),
+        onChanged: onChanged,
       ),
-      title: Text(
-        label,
-        style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
-      ),
-      value: value,
-      activeColor: AppColors.accent,
-      onChanged: onChanged,
     );
   }
 }
